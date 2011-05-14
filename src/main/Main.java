@@ -2,6 +2,9 @@ package main;
 
 import java.awt.Dimension;
 import java.awt.Point;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -11,6 +14,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.imageio.ImageIO;
 
 import data.RectilinearPixelPoly;
 import data.Regions;
@@ -44,6 +49,7 @@ public class Main {
 		while (true) {
 
 			log.info("Cycle is " + cycle++);
+			printImage(r, cycle);
 
 			// Add data readings
 			r.resetDataReadingCount();
@@ -59,6 +65,24 @@ public class Main {
 			log.info("Running algorithm");
 			runAlgorithm(r);
 
+		}
+	}
+
+	private static void printImage(Regions r, int cycle) {
+		BufferedImage bi = r.getImage();
+		StringBuilder name = new StringBuilder("images/cycle");
+		if (cycle < 10)
+			name.append("00").append(cycle).append(".png");
+		else if (cycle > 9 && cycle < 100)
+			name.append("0").append(cycle).append(".png");
+		else
+			name.append(cycle).append(".png");
+
+		try {
+			File f = new File(name.toString());
+			ImageIO.write(bi, "png", f);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
