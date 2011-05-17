@@ -34,6 +34,8 @@ public class RectilinearPixelPoly {
 
 		mRegionManager = manager;
 		mPoints.addAll(initial);
+
+		assert (isContigious());
 	}
 
 	public boolean contains(int x, int y) {
@@ -89,7 +91,7 @@ public class RectilinearPixelPoly {
 
 		int i = 0;
 		int lastIterationListSize = 0;
-		do {
+		while (consumablePoints.size() < amountOfArea) {
 			Point cur = null;
 			try {
 				cur = consumablePoints.get(i);
@@ -99,6 +101,8 @@ public class RectilinearPixelPoly {
 				if (lastIterationListSize == consumablePoints.size()) {
 					// Remove all the points we used
 					mPoints.removeAll(consumablePoints);
+
+					assert (isContigious());
 
 					return consumablePoints;
 				}
@@ -122,7 +126,7 @@ public class RectilinearPixelPoly {
 				consumablePoints.add(new Point(cur.x - 1, cur.y));
 			++i;
 
-		} while (consumablePoints.size() < amountOfArea);
+		}
 
 		// Remove any extra
 		while (consumablePoints.size() != amountOfArea)
@@ -130,6 +134,8 @@ public class RectilinearPixelPoly {
 
 		// Remove all the points we used
 		mPoints.removeAll(consumablePoints);
+
+		// assert(isContigious());
 
 		log.exiting(className, "consumeArea");
 		return consumablePoints;
@@ -265,6 +271,8 @@ public class RectilinearPixelPoly {
 			log.finest("Consumed pixels are:" + points);
 		}
 
+		assert (isContigious());
+
 		mRegionManager.createRegion(points);
 	}
 
@@ -331,6 +339,75 @@ public class RectilinearPixelPoly {
 
 	public void merge(Collection<Point> consumablePoints) {
 		mPoints.addAll(consumablePoints);
+
+		assert (isContigious());
+	}
+
+	/**
+	 * Sanity check method used for asserting that the last operation has not
+	 * left this poly being non-contigious
+	 * 
+	 * @return true if everything is fine, false otherwise
+	 */
+	private boolean isContigious() {
+		if (mPoints.size() == 1)
+			return true;
+
+		for (Point p : mPoints) {
+			Point[] neighbors = getRectilinearNeighboringPoints(p);
+			if (mPoints.contains(neighbors[0])
+					|| mPoints.contains(neighbors[1])
+					|| mPoints.contains(neighbors[2])
+					|| mPoints.contains(neighbors[3]))
+				continue;
+
+			log.severe("Non-contigious point " + p + " in Poly "
+					+ this.toString());
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Used so the
+	 * {@link RectilinearPixelPoly#getRectilinearNeighboringPoints(Point)}
+	 * method doesn't have to allocate memory on every invocation
+	 */
+	private Point[] tempNeighboringResult;
+
+	/**
+	 * Given a {@link Point} p, this returns the 4 points neighboring it e.g. up
+	 * down left right
+	 * 
+	 * @param p
+	 * @return
+	 */
+	private Point[] getRectilinearNeighboringPoints(Point p) {
+		if (tempNeighboringResult == null) {
+			tempNeighboringResult = new Point[4];
+			tempNeighboringResult[0] = new Point();
+			tempNeighboringResult[1] = new Point();
+			tempNeighboringResult[2] = new Point();
+			tempNeighboringResult[3] = new Point();
+		}
+		Point[] result = tempNeighboringResult;
+		int x = p.x;
+		int y = p.y;
+
+		result[0].x = x - 1;
+		result[0].y = y;
+
+		result[1].x = x + 1;
+		result[1].y = y;
+
+		result[2].x = x;
+		result[2].y = y + 1;
+
+		result[3].x = x;
+		result[3].y = y - 1;
+
+		return result;
 	}
 
 	public boolean getIsUsed() {
@@ -505,19 +582,18 @@ public class RectilinearPixelPoly {
 						"The available count was incorrect");
 		}
 
+		// We have already checked if there are 3, so there are 2 and only 2.
+		// Therefore this point is either between an available N/S or E/W, in
+		// which case we don't want to remove from the middle. Alternatively,
+		// this point is at a corner of available space, which we don't want to
+		// consume because we don't know if the two points we were connecting
+		// will remain connected once we leave.
+		// TODO - check which points are available, allow the corner to be
+		// consumed if the two points we are touching will remain connected (we
+		// can do this by checking if a diagonal connection exists)
 		if (available == 2) {
-			if (northAvail && southAvail) {
-				log.exiting(className, "isConsumable", false);
-				return false;
-			}
-			if (!northAvail && !southAvail) {
-				log.exiting(className, "isConsumable", false);
-				return false;
-			}
-
-			log.exiting(className, "isConsumable", true);
-
-			return true;
+			log.exiting(className, "isConsumable", false);
+			return false;
 		}
 
 		if (available == 1) {
