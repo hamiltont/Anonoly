@@ -13,6 +13,10 @@ import java.util.Comparator;
 import java.util.List;
 
 public class Regions {
+	// TODO create Region class, separate the polygon representation (e.g.
+	// RectilinearPixelPoly) from the data that makes this a 'region' e.g. the
+	// input count, etc. This will make it easy to change the underlying polygon
+	// representation
 	List<RectilinearPixelPoly> mRegions = new ArrayList<RectilinearPixelPoly>();
 
 	Rectangle mBorder;
@@ -110,9 +114,9 @@ public class Regions {
 			for (Point p : poly.mPoints)
 				g.drawLine(p.x, p.y, p.x, p.y);
 
-			//g.setColor(Color.black);
-			//for (Point p : poly.getBorder())
-			//	g.drawLine(p.x, p.y, p.x, p.y);
+			// g.setColor(Color.black);
+			// for (Point p : poly.getBorder())
+			// g.drawLine(p.x, p.y, p.x, p.y);
 		}
 
 		return bi;
