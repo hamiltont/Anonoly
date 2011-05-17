@@ -116,14 +116,36 @@ public class RectilinearPixelPoly {
 			log.finest("Checking neighbors of point " + cur
 					+ " for consumability");
 
-			if (isConsumable(cur.x, cur.y - 1, consumablePoints))
+			if (isConsumable(cur.x, cur.y - 1, consumablePoints)) {
 				consumablePoints.add(new Point(cur.x, cur.y - 1));
-			if (isConsumable(cur.x + 1, cur.y, consumablePoints))
+				i = 0;
+				continue;
+			}
+			if (isConsumable(cur.x + 1, cur.y, consumablePoints)) {
 				consumablePoints.add(new Point(cur.x + 1, cur.y));
-			if (isConsumable(cur.x, cur.y + 1, consumablePoints))
+				i = 0;
+				continue;
+			}
+			if (isConsumable(cur.x, cur.y + 1, consumablePoints)) {
 				consumablePoints.add(new Point(cur.x, cur.y + 1));
-			if (isConsumable(cur.x - 1, cur.y, consumablePoints))
+				i = 0;
+				continue;
+
+			}
+			if (isConsumable(cur.x - 1, cur.y, consumablePoints)) {
 				consumablePoints.add(new Point(cur.x - 1, cur.y));
+				i = 0;
+				continue;
+			}
+
+			// TODO I could make the above significantly faster if I kept a
+			// 'minimum' i value that we reset to, instead of constantly
+			// resetting to 0. The 'minimum' could be incremented by one each
+			// time we make it through the entire set of 4 if statements,
+			// because we know that all possible consumable points for that
+			// point have been considered. I think there are some edge cases
+			// though, so I'm not implementing the optimization right now
+
 			++i;
 
 		}
@@ -171,8 +193,13 @@ public class RectilinearPixelPoly {
 
 	/**
 	 * Given another polygon, this walks all of the edges of this polygon and
-	 * finds a point on the <b>other</b> polygon that both a) touches one of the
-	 * edges of this polygon and b) is consumable
+	 * finds a point on the <b>other</b> polygon that
+	 * <ul>
+	 * <li>touches one of the edges of this polygon</li>
+	 * <li>is consumable
+	 * <li>
+	 * <li>is a leaf point of this polygon (if there are any)</li>
+	 * </ul>
 	 * 
 	 * @param other
 	 *            The polygon that this {@link RectilinearPixelPoly} is about to
@@ -230,7 +257,9 @@ public class RectilinearPixelPoly {
 		log.entering(className, "split", amountOfArea);
 
 		Point edge = null;
-		for (Point p : getBorder()) {
+		List<Point> border = getBorder();
+		Collections.sort(border, MergeRanking);
+		for (Point p : border) {
 
 			if (isConsumable(p.x, p.y, null)) {
 				edge = p;
@@ -569,10 +598,35 @@ public class RectilinearPixelPoly {
 		// this point is at a corner of available space, which we don't want to
 		// consume because we don't know if the two points we were connecting
 		// will remain connected once we leave.
-		// TODO - check which points are available, allow the corner to be
-		// consumed if the two points we are touching will remain connected (we
-		// can do this by checking if a diagonal connection exists)
 		if (available == 2) {
+
+			if (northAvail && southAvail || eastAvail && westAvail) {
+				log.exiting(className, "isConsumable", false);
+				return false;
+			}
+
+			// If we are here, then this is a 'corner' point. Either E/N, E/S,
+			// W/N, or W/S are available. We want to check the other 'corner' of
+			// this 2x2 square to see if the two available points would still be
+			// touching if this one was consumed
+			int x2 = 0, y2 = 0;
+			if (northAvail)
+				y2 = y + 1;
+			else
+				y2 = y - 1;
+			if (eastAvail)
+				x2 = x + 1;
+			else
+				x2 = x - 1;
+
+			// Check if the original polygon would still be contiguous if we
+			// consumed this point
+			if (contains(x2, y2)
+					&& false == toBeConsumed.contains(new Point(x2, y2))) {
+				log.exiting(className, "isConsumable", true);
+				return true;
+			}
+
 			log.exiting(className, "isConsumable", false);
 			return false;
 		}
@@ -628,6 +682,36 @@ public class RectilinearPixelPoly {
 		b.append(mPoints.toString());
 		b.append("]");
 		return b.toString();
-
 	}
+
+	/**
+	 * When used to sort a list of points that are contained within this
+	 * {@link RectilinearPixelPoly}, the best starting {@link Point}s for a
+	 * merge will be placed at the front of the list. The best starting points
+	 * are defined as being those that have only one neighboring pixel (e.g.
+	 * only N, E, W, or S), and therefore are the 'leaf' pixels of this polygon.
+	 * All other points are considered to be equal in desirability
+	 */
+	Comparator<Point> MergeRanking = new Comparator<Point>() {
+
+		@Override
+		public int compare(Point o1, Point o2) {
+			int avail1 = 0, avail2 = 0;
+			for (Point p : getRectilinearNeighboringPoints(o1))
+				if (mPoints.contains(p))
+					++avail1;
+
+			for (Point p : getRectilinearNeighboringPoints(o2))
+				if (mPoints.contains(p))
+					++avail2;
+
+			if (avail1 == 1 && avail2 != 1)
+				return -1;
+			else if (avail1 != 1 && avail2 == 1)
+				return 1;
+			else
+				return 0;
+		}
+	};
+
 }
