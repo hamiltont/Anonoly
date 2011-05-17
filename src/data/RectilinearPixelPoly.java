@@ -229,12 +229,8 @@ public class RectilinearPixelPoly {
 	public void split(int amountOfArea) {
 		log.entering(className, "split", amountOfArea);
 
-		log.finest("Getting inner border to find start point");
 		Point edge = null;
-		List<Point> innerBorder = getInnerBorder();
-		for (Point p : innerBorder) {
-
-			log.finest("Checking " + p + " for consumable edge status");
+		for (Point p : getBorder()) {
 
 			if (isConsumable(p.x, p.y, null)) {
 				edge = p;
@@ -243,24 +239,7 @@ public class RectilinearPixelPoly {
 		}
 
 		if (edge == null) {
-			log
-					.fine("There is no consumable edge on the inner border, expanding the search to include the outer border");
-
-			for (Point p : getBorder()) {
-				if (innerBorder.contains(p))
-					continue;
-
-				if (isConsumable(p.x, p.y, null)) {
-					edge = p;
-					break;
-				}
-			}
-
-			if (edge == null) {
-				throw new IllegalStateException(
-						"No consumable edges were found");
-			}
-
+			throw new IllegalStateException("No consumable edges were found");
 		}
 
 		log.fine("Found an appropriate starting edge: " + edge);
@@ -309,6 +288,8 @@ public class RectilinearPixelPoly {
 	 * 
 	 * @return
 	 */
+	// TODO build ordering comparators so that the returned points are optimized
+	// for certain operations, such as splitting and merging?
 	public List<Point> getBorder() {
 		List<Point> border = new ArrayList<Point>((int) (mPoints.size() * 0.75));
 
