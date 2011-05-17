@@ -195,7 +195,9 @@ public class Main {
 			}
 
 			// We are too large, time to shrink!
-			if (count > K) {
+			// The K*2 is critical - you don't want to split if you are going to
+			// cause a privacy invasion!
+			if (count >= (K * 2)) {
 				log.info("Needs to shrink");
 				int change = getDesiredChange(K - count, poly.getArea());
 				log.fine("Needs to shrink by " + change);
@@ -206,6 +208,22 @@ public class Main {
 
 		} // End r.hasNext
 
+	}
+
+	/**
+	 * Given a value of for data readings larger than the desired K, this will
+	 * return the number of equally-sized partitions that the region should be
+	 * separated into to promote all divisions having close to K in the next
+	 * iteration.
+	 * 
+	 * @param realK
+	 * @return
+	 */
+	public static int getNumberOfPartitions(int realK) {
+		if (realK < K)
+			throw new IllegalStateException();
+		
+		
 	}
 
 	public static int getDesiredChange(int differenceFromK, int currentArea) {
