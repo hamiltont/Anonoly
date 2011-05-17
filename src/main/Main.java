@@ -25,23 +25,23 @@ public class Main {
 	public static final Logger log = Logger.getLogger(Main.class
 			.getCanonicalName());
 
-	public static final int K = 10;
+	public static final int K = 1;
 	static List<Point> randomReadings = new ArrayList<Point>();
 
 	public static void main(String[] args) {
 
-		Regions r = new Regions(new Dimension(50, 50));
+		Regions r = new Regions(new Dimension(3, 3));
 		r.resetDataReadingCount();
 		r.resetRegionUsage();
 
 		Random rand = new Random();
 		rand.setSeed(10);
-		for (int i = 0; i < 100; i++)
-			randomReadings.add(new Point(rand.nextInt(50), rand.nextInt(50)));
+		// for (int i = 0; i < 100; i++)
+		// randomReadings.add(new Point(rand.nextInt(50), rand.nextInt(50)));
 
-		// for (int x = 0; x < 3; x++)
-		// for (int y = 0; y < 3; y++)
-		// randomReadings.add(new Point(x, y));
+		for (int x = 0; x < 3; x++)
+			for (int y = 0; y < 3; y++)
+				randomReadings.add(new Point(x, y));
 
 		log.info("Generated Random Data Reading Locations");
 
@@ -199,9 +199,16 @@ public class Main {
 			// cause a privacy invasion!
 			if (count >= (K * 2)) {
 				log.info("Needs to shrink");
-				int change = getDesiredChange(K - count, poly.getArea());
-				log.fine("Needs to shrink by " + change);
-				poly.split(change);
+				int partitions = getNumberOfPartitions(count);
+				int areaPerPartition = poly.getArea() / partitions;
+				log
+						.fine("Needs to be cut into " + partitions
+								+ " partitions with " + areaPerPartition
+								+ " area each");
+				while (partitions != 1) {
+					poly.split(areaPerPartition);
+					--partitions;
+				}
 
 				poly.setIsUsed(true);
 			}
@@ -219,11 +226,16 @@ public class Main {
 	 * @param realK
 	 * @return
 	 */
+	// TODO I can avoid dropping below K so rapidly by reducing the
+	// agressiveness of this approach, e.g. divide the result by two before
+	// returningss
 	public static int getNumberOfPartitions(int realK) {
 		if (realK < K)
 			throw new IllegalStateException();
-		
-		
+
+		double percentOfDesiredK = (double) realK / (double) K;
+		int floor = (int) Math.floor(percentOfDesiredK);
+		return floor;
 	}
 
 	public static int getDesiredChange(int differenceFromK, int currentArea) {
