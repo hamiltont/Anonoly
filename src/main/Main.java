@@ -25,23 +25,23 @@ public class Main {
 	public static final Logger log = Logger.getLogger(Main.class
 			.getCanonicalName());
 
-	public static final int K = 1;
+	public static final int K = 10;
 	static List<Point> randomReadings = new ArrayList<Point>();
 
 	public static void main(String[] args) {
 
-		Regions r = new Regions(new Dimension(3, 3));
+		Regions r = new Regions(new Dimension(50, 50));
 		r.resetDataReadingCount();
 		r.resetRegionUsage();
 
 		Random rand = new Random();
 		rand.setSeed(10);
-		// for (int i = 0; i < 100; i++)
-		// randomReadings.add(new Point(rand.nextInt(50), rand.nextInt(50)));
+		for (int i = 0; i < 100; i++)
+			randomReadings.add(new Point(rand.nextInt(50), rand.nextInt(50)));
 
-		for (int x = 0; x < 3; x++)
-			for (int y = 0; y < 3; y++)
-				randomReadings.add(new Point(x, y));
+		// for (int x = 0; x < 3; x++)
+		// for (int y = 0; y < 3; y++)
+		// randomReadings.add(new Point(x, y));
 
 		log.info("Generated Random Data Reading Locations");
 
@@ -135,14 +135,6 @@ public class Main {
 				for (RectilinearPixelPoly resource : neighbors) {
 					log.finest("Considering Neighbor " + resource);
 
-					// We only want to consume from neighbors that need to
-					// shrink
-					// if (resource.getDataReadingCount() < K &&
-					// resource.getArea() > change) {
-					// log.finest("Neighbor is unusable (they will likely consume us!)");
-					// continue;
-					// }
-
 					if (resource.getDataReadingCount() + count <= K)
 						desiredChange = resource.getArea();
 
@@ -227,14 +219,14 @@ public class Main {
 	 * @return
 	 */
 	// TODO I can avoid dropping below K so rapidly by reducing the
-	// agressiveness of this approach, e.g. divide the result by two before
-	// returningss
+	// aggressiveness of this approach, e.g. divide the result by 1.5 before
+	// returning. Create a parameter for this! 
 	public static int getNumberOfPartitions(int realK) {
 		if (realK < K)
 			throw new IllegalStateException();
 
 		double percentOfDesiredK = (double) realK / (double) K;
-		int floor = (int) Math.floor(percentOfDesiredK);
+		int floor = (int) Math.floor(percentOfDesiredK / 1.1);
 		return floor;
 	}
 
@@ -305,20 +297,5 @@ public class Main {
 		}
 	};
 
-	// static Comparator<RectilinearPixelPoly> MergeRanking = new
-	// Comparator<RectilinearPixelPoly>() {
-	// @Override
-	// public int compare(RectilinearPixelPoly o1, RectilinearPixelPoly o2) {
-	// // Return -1 if o1 should be more to the front, 1 if o2 shoudl be more,
-	// etc
-	//			
-	// int o1count = o1.getDataReadingCount();
-	// int o2count =
-	//			
-	// if ()
-	//			
-	// return 0;
-	// }
-	//
-	// };
+
 }
