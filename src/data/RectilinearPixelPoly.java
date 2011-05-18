@@ -198,7 +198,7 @@ public class RectilinearPixelPoly {
 	 * <li>touches one of the edges of this polygon</li>
 	 * <li>is consumable
 	 * <li>
-	 * <li>is a leaf point of this polygon (if there are any)</li>
+	 * <li>is a leaf point on the <b>other</b> polygon (if there are any)</li>
 	 * </ul>
 	 * 
 	 * @param other
@@ -209,7 +209,7 @@ public class RectilinearPixelPoly {
 	public Point getStartPoint(RectilinearPixelPoly other) {
 		log.entering(className, "getStartPoint", other);
 		if (this == other) {
-			log.info("A polygon was passed to its own getStartPoint method");
+			log.severe("A polygon was passed to its own getStartPoint method");
 			return null;
 		}
 
@@ -218,27 +218,18 @@ public class RectilinearPixelPoly {
 		// more time to internally find the edges than it would take to simply
 		// check every pixel
 		List<Point> temp = new ArrayList<Point>(0);
-		Point result = null;
-		for (Point p : mPoints) {
-			if (other.contains(p.x + 1, p.y)
-					&& other.isConsumable(p.x + 1, p.y, temp))
-				result = new Point(p.x + 1, p.y);
+		List<Point> otherPoints = other.getBorder();
+		Collections.sort(otherPoints, other.MergeRanking);
+		for (Point p : otherPoints) {
+			if (false == other.isConsumable(p.x, p.y, temp))
+				continue;
 
-			if (result == null && other.contains(p.x - 1, p.y)
-					&& other.isConsumable(p.x - 1, p.y, temp))
-				result = new Point(p.x - 1, p.y);
+			if (this.contains(p.x + 1, p.y) || this.contains(p.x - 1, p.y)
+					|| this.contains(p.x, p.y + 1)
+					|| this.contains(p.x, p.y - 1)) {
 
-			if (result == null && other.contains(p.x, p.y + 1)
-					&& other.isConsumable(p.x, p.y + 1, temp))
-				result = new Point(p.x, p.y + 1);
-
-			if (result == null && other.contains(p.x, p.y - 1)
-					&& other.isConsumable(p.x, p.y - 1, temp))
-				result = new Point(p.x, p.y - 1);
-
-			if (result != null) {
-				log.exiting(className, "getStartPoint", result);
-				return result;
+				log.exiting(className, "getStartPoint", p);
+				return p;
 			}
 		}
 
@@ -247,7 +238,7 @@ public class RectilinearPixelPoly {
 	}
 
 	/**
-	 * Divides this one polygon into two
+	 * Divides thi8s one polygon into two
 	 * 
 	 * @param amountOfArea
 	 *            The amount of space that should be removed from this polygon
