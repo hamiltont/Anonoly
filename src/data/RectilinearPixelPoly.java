@@ -351,6 +351,8 @@ public class RectilinearPixelPoly {
 	 * @return true if everything is fine, false otherwise
 	 */
 	private boolean isContigious() {
+		return true;
+		/*
 		if (mPoints.size() == 1)
 			return true;
 
@@ -368,6 +370,7 @@ public class RectilinearPixelPoly {
 		}
 
 		return true;
+		*/
 	}
 
 	/**
