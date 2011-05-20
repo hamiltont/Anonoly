@@ -53,6 +53,7 @@ public class Main {
 
 			// Add data readings
 			r.resetDataReadingCount();
+			moveReadings(rand, randomReadings);
 			for (Point p : randomReadings)
 				r.addDataReading(p);
 			log.info("Added data reading locations");
@@ -66,6 +67,25 @@ public class Main {
 			runAlgorithm(r);
 
 		}
+	}
+
+	private static void moveReadings(Random rand, List<Point> randomReadings2) {
+		for (Point p : randomReadings2)
+			if (rand.nextBoolean())
+			{
+				// Move east west
+				if (rand.nextBoolean())
+					p.x = Math.min(p.x + rand.nextInt(5), 49);
+				else
+					p.x = Math.max(p.x - rand.nextInt(5), 0);
+			} else
+			{
+				// Move east west
+				if (rand.nextBoolean())
+					p.y = Math.min(p.y + rand.nextInt(5), 49);
+				else
+					p.y = Math.max(p.y - rand.nextInt(5), 0);				
+			}
 	}
 
 	private static void printImage(Regions r, int cycle) {
