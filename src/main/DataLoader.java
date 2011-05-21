@@ -185,7 +185,7 @@ public class DataLoader {
 				mTempCalendar.setTimeInMillis(time);
 				//System.out.println("Checking "
 				//		+ mTempCalendar.getTime().toLocaleString());
-				if (passesTimeFilters(time)) {
+				if (passesDayMonthYearTimeFilters(time)) {
 					mInputFile.reset();
 					return;
 				}
@@ -195,6 +195,15 @@ public class DataLoader {
 				return;
 			}
 		}
+	}
+	
+	private boolean passesDayMonthYearTimeFilters(long timeStamp) {
+		mTempCalendar.setTimeInMillis(timeStamp);
+
+		if (mTempCalendar.before(mRangeStart) || mTempCalendar.after(mRangeEnd))
+			return false;
+
+		return true;
 	}
 
 	/**
