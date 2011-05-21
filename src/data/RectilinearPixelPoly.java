@@ -1,7 +1,12 @@
 package data;
 
+import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -11,6 +16,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.imageio.ImageIO;
 
 import main.Main;
 
@@ -206,6 +213,8 @@ public class RectilinearPixelPoly {
 	 *            call consumeArea on
 	 * @return
 	 */
+	public static boolean debug = false;
+
 	public Point getStartPoint(RectilinearPixelPoly other) {
 		log.entering(className, "getStartPoint", other);
 		if (this == other) {
@@ -221,6 +230,21 @@ public class RectilinearPixelPoly {
 		List<Point> otherPoints = other.getBorder();
 		Collections.sort(otherPoints, other.MergeRanking);
 		for (Point p : otherPoints) {
+
+			if (debug) {
+				BufferedImage bi = mRegionManager.getDebugBorderImage(this,
+						other);
+				Graphics g = bi.getGraphics();
+				g.setColor(Color.yellow);
+				g.drawLine(p.x, p.y, p.x, p.y);
+				try {
+					ImageIO.write(bi, "png", new File(
+							"images/debug-start-point-current.png"));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
 			if (false == other.isConsumable(p.x, p.y, temp))
 				continue;
 
@@ -232,6 +256,17 @@ public class RectilinearPixelPoly {
 				return p;
 			}
 		}
+
+		try {
+			ImageIO.write(mRegionManager.getDebugImage(this, other), "png",
+					new File("images/debug-start-point.png"));
+			ImageIO.write(mRegionManager.getDebugBorderImage(this, other),
+					"png", new File("images/debug-start-point-border.png"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		debug = true;
+		getStartPoint(other);
 
 		throw new IllegalStateException(
 				"There appear to be no available starting points");
@@ -353,24 +388,19 @@ public class RectilinearPixelPoly {
 	private boolean isContigious() {
 		return true;
 		/*
-		if (mPoints.size() == 1)
-			return true;
-
-		for (Point p : mPoints) {
-			Point[] neighbors = getRectilinearNeighboringPoints(p);
-			if (mPoints.contains(neighbors[0])
-					|| mPoints.contains(neighbors[1])
-					|| mPoints.contains(neighbors[2])
-					|| mPoints.contains(neighbors[3]))
-				continue;
-
-			log.severe("Non-contigious point " + p + " in Poly "
-					+ this.toString());
-			return false;
-		}
-
-		return true;
-		*/
+		 * if (mPoints.size() == 1) return true;
+		 * 
+		 * for (Point p : mPoints) { Point[] neighbors =
+		 * getRectilinearNeighboringPoints(p); if
+		 * (mPoints.contains(neighbors[0]) || mPoints.contains(neighbors[1]) ||
+		 * mPoints.contains(neighbors[2]) || mPoints.contains(neighbors[3]))
+		 * continue;
+		 * 
+		 * log.severe("Non-contigious point " + p + " in Poly " +
+		 * this.toString()); return false; }
+		 * 
+		 * return true;
+		 */
 	}
 
 	/**

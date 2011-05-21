@@ -99,7 +99,52 @@ public class Regions {
 		return result;
 	}
 
+	
 	Color[] colors = null;
+	
+	public BufferedImage getDebugBorderImage(RectilinearPixelPoly... regions) {
+		BufferedImage bi = new BufferedImage(mBorder.width + 1,
+				mBorder.height + 1, BufferedImage.TYPE_INT_RGB);
+		Graphics g = bi.getGraphics();
+
+		if (colors == null)
+			generateColors();
+		int color = 0;
+
+		for (RectilinearPixelPoly poly : regions) {
+			g.setColor(colors[color++ % colors.length]);
+			for (Point p : poly.getBorder())
+				g.drawLine(p.x, p.y, p.x, p.y);
+
+			// g.setColor(Color.black);
+			// for (Point p : poly.getBorder())
+			// g.drawLine(p.x, p.y, p.x, p.y);
+		}
+
+		return bi;	
+	}
+	
+	public BufferedImage getDebugImage(RectilinearPixelPoly... regions) {
+		BufferedImage bi = new BufferedImage(mBorder.width + 1,
+				mBorder.height + 1, BufferedImage.TYPE_INT_RGB);
+		Graphics g = bi.getGraphics();
+
+		if (colors == null)
+			generateColors();
+		int color = 0;
+
+		for (RectilinearPixelPoly poly : regions) {
+			g.setColor(colors[color++ % colors.length]);
+			for (Point p : poly.mPoints)
+				g.drawLine(p.x, p.y, p.x, p.y);
+
+			// g.setColor(Color.black);
+			// for (Point p : poly.getBorder())
+			// g.drawLine(p.x, p.y, p.x, p.y);
+		}
+
+		return bi;	
+	}
 
 	public BufferedImage getImage() {
 		BufferedImage bi = new BufferedImage(mBorder.width + 1,
