@@ -34,15 +34,17 @@ public class Main {
 		r.resetDataReadingCount();
 		r.resetRegionUsage();
 
-		Random rand = new Random();
-		rand.setSeed(10);
-		for (int i = 0; i < 100; i++)
-			randomReadings.add(new Point(rand.nextInt(50), rand.nextInt(50)));
+		// Random rand = new Random();
+		// rand.setSeed(10);
+		// for (int i = 0; i < 100; i++)
+		// randomReadings.add(new Point(rand.nextInt(50), rand.nextInt(50)));
 
 		// for (int x = 0; x < 3; x++)
 		// for (int y = 0; y < 3; y++)
 		// randomReadings.add(new Point(x, y));
 
+		DataLoader loader = new DataLoader(DataLoader.TimeSlice.Hour, null,
+				null, null, null);
 		log.info("Generated Random Data Reading Locations");
 
 		int cycle = 0;
@@ -53,9 +55,11 @@ public class Main {
 
 			// Add data readings
 			r.resetDataReadingCount();
-			moveReadings(rand, randomReadings);
-			for (Point p : randomReadings)
-				r.addDataReading(p);
+			// moveReadings(rand, randomReadings);
+			// for (Point p : randomReadings)
+			// r.addDataReading(p);
+			loader.addPixels(r);
+
 			log.info("Added data reading locations");
 
 			// Order and reset usage
@@ -71,20 +75,18 @@ public class Main {
 
 	private static void moveReadings(Random rand, List<Point> randomReadings2) {
 		for (Point p : randomReadings2)
-			if (rand.nextBoolean())
-			{
+			if (rand.nextBoolean()) {
 				// Move east west
 				if (rand.nextBoolean())
 					p.x = Math.min(p.x + rand.nextInt(5), 49);
 				else
 					p.x = Math.max(p.x - rand.nextInt(5), 0);
-			} else
-			{
+			} else {
 				// Move east west
 				if (rand.nextBoolean())
 					p.y = Math.min(p.y + rand.nextInt(5), 49);
 				else
-					p.y = Math.max(p.y - rand.nextInt(5), 0);				
+					p.y = Math.max(p.y - rand.nextInt(5), 0);
 			}
 	}
 
@@ -240,7 +242,7 @@ public class Main {
 	 */
 	// TODO I can avoid dropping below K so rapidly by reducing the
 	// aggressiveness of this approach, e.g. divide the result by 1.5 before
-	// returning. Create a parameter for this! 
+	// returning. Create a parameter for this!
 	public static int getNumberOfPartitions(int realK) {
 		if (realK < K)
 			throw new IllegalStateException();
@@ -316,6 +318,5 @@ public class Main {
 			throw new IllegalStateException();
 		}
 	};
-
 
 }

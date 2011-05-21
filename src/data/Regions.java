@@ -71,8 +71,9 @@ public class Regions {
 				return;
 			}
 
-		throw new IllegalStateException(
-				"None of the regions contained the given location");
+		(new IllegalStateException(
+				"None of the regions contained the given location"))
+				.printStackTrace();
 	}
 
 	public List<RectilinearPixelPoly> getRegions() {
