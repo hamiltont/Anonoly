@@ -17,6 +17,11 @@ import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
+import main.DataLoader.DayFilter;
+import main.DataLoader.HourFilter;
+import main.DataLoader.MonthFilter;
+import main.DataLoader.YearFilter;
+
 import data.RectilinearPixelPoly;
 import data.Regions;
 
@@ -25,8 +30,24 @@ public class Main {
 	public static final Logger log = Logger.getLogger(Main.class
 			.getCanonicalName());
 
-	public static final int K = 10;
+	public static final int K = 1500;
 	static List<Point> randomReadings = new ArrayList<Point>();
+
+	static YearFilter yf = new YearFilter();
+	static MonthFilter mf = new MonthFilter();
+	static DayFilter df = new DayFilter();
+	static HourFilter hf = new HourFilter();
+
+	static {
+		yf.startYear = 2003;
+		yf.endYear = 2003;
+		mf.startMonth = 9;
+		mf.endMonth = 10;
+		df.startDay = 24;
+		df.endDay = 31;
+		hf.startHour = 11;
+		hf.endHour = 17;
+	}
 
 	public static void main(String[] args) {
 
@@ -43,8 +64,8 @@ public class Main {
 		// for (int y = 0; y < 3; y++)
 		// randomReadings.add(new Point(x, y));
 
-		DataLoader loader = new DataLoader(DataLoader.TimeSlice.Hour, null,
-				null, null, null);
+		DataLoader loader = new DataLoader(DataLoader.TimeSlice.Day, yf, mf,
+				df, hf);
 		log.info("Generated Random Data Reading Locations");
 
 		int cycle = 0;
@@ -219,6 +240,15 @@ public class Main {
 						.fine("Needs to be cut into " + partitions
 								+ " partitions with " + areaPerPartition
 								+ " area each");
+				if (poly.getArea() == 0) {
+					log.severe("Not sure why, but this poly has an area of 0");
+					areaPerPartition = 1;
+				}
+				if (areaPerPartition == 0) {
+					log
+							.severe("There were so many data readings that we could have fractions of pixels and still meet k-anonymity. For now we are using the finest granularity possible (e.g. 1 pixel) and having k values higher than desired. ");
+					areaPerPartition = 1;
+				}
 				while (partitions != 1) {
 					poly.split(areaPerPartition);
 					--partitions;
