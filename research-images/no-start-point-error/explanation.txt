@@ -1,0 +1,8 @@
+we see the two regions, wth the large attempting to consume all but 3 pixels 
+of the smaller. THe problem is that none of the pixels that are neighboring
+the two regions (on the smaller polygon) are consumable. I see two
+solutions:
+ - consume the entire region. You clearly didn't want all of it (or get
+ 	start point would never be called), but this ensure k-anon is retained
+ - 'flip' the consumption, and force the smaller to 'consume' x number of 
+ 	pixels from the larger
