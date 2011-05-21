@@ -70,6 +70,10 @@ public class RectilinearPixelPoly {
 	 *            the number of pixels desired. If this is greater than the size
 	 *            of this polygon, all polygon pixels are returned and this poly
 	 *            will deregister itself from the area
+	 * @param startPoint
+	 *            The point at which the merge will start. If the caller is
+	 *            positive that they will consume this entire polygon, then this
+	 *            can be null
 	 * @return all of the points that can be consumed, up to
 	 *         Math.min(amountOfArea,size). The caller should check the size to
 	 *         see if it got what it requested
@@ -199,6 +203,15 @@ public class RectilinearPixelPoly {
 	}
 
 	/**
+	 * Retrieves the best starting point for merging of two polygons. The passed
+	 * polygon should be the one being merged into e.g. the one being consumed.
+	 * The returned {@link Point} is a point contained within the other polygon.
+	 * It is expected that the result of this call will be passed into the
+	 * {@link RectilinearPixelPoly#consumeArea(int, Point)} method that belongs
+	 * to the polygon being consumed. There are instances where this method
+	 * cannot find any starting {@link Point}, and it will return null in those
+	 * cases
+	 * 
 	 * Given another polygon, this walks all of the edges of this polygon and
 	 * finds a point on the <b>other</b> polygon that
 	 * <ul>
@@ -208,13 +221,18 @@ public class RectilinearPixelPoly {
 	 * <li>is a leaf point on the <b>other</b> polygon (if there are any)</li>
 	 * </ul>
 	 * 
+	 * Yes, this is a bit complicated. Given time I can hide this method
+	 * 
 	 * @param other
-	 *            The polygon that this {@link RectilinearPixelPoly} is about to
-	 *            call consumeArea on
-	 * @return
+	 *            the polygon being consumed by 'this'
+	 * @return null if there is no possible starting point for consumption (e.g.
+	 *         the consumption must be an all-or-nothing operation). This
+	 *         happens because of the underlying method of merging, and could be
+	 *         resolved in a different library. Not that the merging is
+	 *         directional, so receiving null on A.getStartPoint(B) does not
+	 *         mean that you will receive null if you call B.getStartPoint(A),
+	 *         although it also does not mean that you will not get null.
 	 */
-	public static boolean debug = false;
-
 	public Point getStartPoint(RectilinearPixelPoly other) {
 		log.entering(className, "getStartPoint", other);
 		if (this == other) {
@@ -231,20 +249,6 @@ public class RectilinearPixelPoly {
 		Collections.sort(otherPoints, other.MergeRanking);
 		for (Point p : otherPoints) {
 
-			if (debug) {
-				BufferedImage bi = mRegionManager.getDebugBorderImage(this,
-						other);
-				Graphics g = bi.getGraphics();
-				g.setColor(Color.yellow);
-				g.drawLine(p.x, p.y, p.x, p.y);
-				try {
-					ImageIO.write(bi, "png", new File(
-							"images/debug-start-point-current.png"));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-
 			if (false == other.isConsumable(p.x, p.y, temp))
 				continue;
 
@@ -257,19 +261,7 @@ public class RectilinearPixelPoly {
 			}
 		}
 
-		try {
-			ImageIO.write(mRegionManager.getDebugImage(this, other), "png",
-					new File("images/debug-start-point.png"));
-			ImageIO.write(mRegionManager.getDebugBorderImage(this, other),
-					"png", new File("images/debug-start-point-border.png"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		debug = true;
-		getStartPoint(other);
-
-		throw new IllegalStateException(
-				"There appear to be no available starting points");
+		return null;
 	}
 
 	/**

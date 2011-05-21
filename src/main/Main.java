@@ -185,9 +185,8 @@ public class Main {
 					// available, we can rest assured that the consumeArea
 					// method will not fail
 					if (desiredChange >= resource.getArea()) {
-						Point start = poly.getStartPoint(resource);
 						Collection<Point> points = resource.consumeArea(
-								desiredChange, start);
+								desiredChange, null);
 						poly.merge(points);
 						desiredChange -= points.size();
 
@@ -201,8 +200,18 @@ public class Main {
 						do {
 
 							Point start = poly.getStartPoint(resource);
-							Collection<Point> consumable = resource
-									.consumeArea(desiredChange, start);
+							Collection<Point> consumable = null;
+							if (start == null) {
+								log
+										.info("Unable to find a start point, so consuming entire polygon");
+								log.info("This gives us " + resource.getArea()
+										+ " pixels when we only wanted "
+										+ desiredChange);
+								consumable = resource.consumeArea(resource
+										.getArea(), null);
+							} else
+								consumable = resource.consumeArea(
+										desiredChange, start);
 							consumedSoFar += consumable.size();
 							poly.merge(consumable);
 							desiredChange -= consumable.size();
