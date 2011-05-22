@@ -1,12 +1,7 @@
 package data;
 
-import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -14,10 +9,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.imageio.ImageIO;
 
 import main.Main;
 
@@ -88,8 +82,16 @@ public class RectilinearPixelPoly {
 			return mPoints;
 		}
 
+		// TODO this is currently very wasteful in terms of memory. Keeping
+		// track of all the pointers 2x is significantly costly. However, I need
+		// the isConsumable method to be *very* fast, and it calls contains on
+		// the passed collection. Therefore, I pass the set, where the contains
+		// is super fast. However, I also need to maintain a strict ordering of
+		// the elements (so that I can logically advance the merge from the
+		// start point outward), and therefore I use the List for that
 		List<Point> consumablePoints = new ArrayList<Point>(amountOfArea + 8);
-		if (isConsumable(startPoint.x, startPoint.y, consumablePoints)) {
+		Set<Point> consumablePointsCopy = new HashSet<Point>(amountOfArea + 8);
+		if (isConsumable(startPoint.x, startPoint.y, null)) {
 			// TODO - better understanding of this section
 			log.finest("Start point is consumable");
 			consumablePoints.add(startPoint);
@@ -127,24 +129,32 @@ public class RectilinearPixelPoly {
 			log.finest("Checking neighbors of point " + cur
 					+ " for consumability");
 
-			if (isConsumable(cur.x, cur.y - 1, consumablePoints)) {
+			if (isConsumable(cur.x, cur.y - 1, consumablePointsCopy)) {
 				consumablePoints.add(new Point(cur.x, cur.y - 1));
+				consumablePointsCopy.add(consumablePoints.get(consumablePoints
+						.size() - 1));
 				i = 0;
 				continue;
 			}
-			if (isConsumable(cur.x + 1, cur.y, consumablePoints)) {
+			if (isConsumable(cur.x + 1, cur.y, consumablePointsCopy)) {
 				consumablePoints.add(new Point(cur.x + 1, cur.y));
+				consumablePointsCopy.add(consumablePoints.get(consumablePoints
+						.size() - 1));
 				i = 0;
 				continue;
 			}
-			if (isConsumable(cur.x, cur.y + 1, consumablePoints)) {
+			if (isConsumable(cur.x, cur.y + 1, consumablePointsCopy)) {
 				consumablePoints.add(new Point(cur.x, cur.y + 1));
+				consumablePointsCopy.add(consumablePoints.get(consumablePoints
+						.size() - 1));
 				i = 0;
 				continue;
 
 			}
-			if (isConsumable(cur.x - 1, cur.y, consumablePoints)) {
+			if (isConsumable(cur.x - 1, cur.y, consumablePointsCopy)) {
 				consumablePoints.add(new Point(cur.x - 1, cur.y));
+				consumablePointsCopy.add(consumablePoints.get(consumablePoints
+						.size() - 1));
 				i = 0;
 				continue;
 			}
@@ -244,12 +254,15 @@ public class RectilinearPixelPoly {
 		// know that the contains method is very fast, so it would likely take
 		// more time to internally find the edges than it would take to simply
 		// check every pixel
-		List<Point> temp = new ArrayList<Point>(0);
 		List<Point> otherPoints = other.getBorder();
+		// TODO I don't think this is correct. This leads to a tendency to start
+		// merging from a point, which results in the same long tendrils that I
+		// was trying to avoid in the first place. I tihnk this sorting works
+		// great for the split algorithm, but perhaps not so well here
 		Collections.sort(otherPoints, other.MergeRanking);
 		for (Point p : otherPoints) {
 
-			if (false == other.isConsumable(p.x, p.y, temp))
+			if (false == other.isConsumable(p.x, p.y, null))
 				continue;
 
 			if (this.contains(p.x + 1, p.y) || this.contains(p.x - 1, p.y)
@@ -265,7 +278,7 @@ public class RectilinearPixelPoly {
 	}
 
 	/**
-	 * Divides thi8s one polygon into two
+	 * Divides this one polygon into two
 	 * 
 	 * @param amountOfArea
 	 *            The amount of space that should be removed from this polygon
@@ -466,9 +479,9 @@ public class RectilinearPixelPoly {
 	 *            are none, it is acceptable to pass null
 	 * @return
 	 */
-	List<Point> tempList = new ArrayList<Point>(0);
+	final Set<Point> tempList = new HashSet<Point>(0);
 
-	private boolean isConsumable(int x, int y, List<Point> toBeConsumed) {
+	private boolean isConsumable(int x, int y, Set<Point> toBeConsumed) {
 		log.entering(className, "isConsumable", new Object[] { new Point(x, y),
 				toBeConsumed });
 		temp.x = x;
@@ -503,7 +516,7 @@ public class RectilinearPixelPoly {
 		// Check if north is available
 		boolean northAvail = false;
 		if (contains(x, y + 1))
-			if (false == toBeConsumed.contains(new Point(x, y + 1))) {
+			if (false == toBeConsumed.contains(getTempPoint(x, y + 1))) {
 				northAvail = true;
 				++available;
 			}
@@ -511,7 +524,7 @@ public class RectilinearPixelPoly {
 		// Check if east is available
 		boolean eastAvail = false;
 		if (contains(x + 1, y))
-			if (false == toBeConsumed.contains(new Point(x + 1, y))) {
+			if (false == toBeConsumed.contains(getTempPoint(x + 1, y))) {
 				eastAvail = true;
 				++available;
 			}
@@ -519,7 +532,7 @@ public class RectilinearPixelPoly {
 		// Check if south is available
 		boolean southAvail = false;
 		if (contains(x, y - 1))
-			if (false == toBeConsumed.contains(new Point(x, y - 1))) {
+			if (false == toBeConsumed.contains(getTempPoint(x, y - 1))) {
 				southAvail = true;
 				++available;
 			}
@@ -527,7 +540,7 @@ public class RectilinearPixelPoly {
 		// Check if west is available
 		boolean westAvail = false;
 		if (contains(x - 1, y))
-			if (false == toBeConsumed.contains(new Point(x - 1, y))) {
+			if (false == toBeConsumed.contains(getTempPoint(x - 1, y))) {
 				westAvail = true;
 				++available;
 			}
@@ -544,12 +557,12 @@ public class RectilinearPixelPoly {
 			if (!northAvail) {
 				// Check bottom-left and bottom-right
 				if (false == contains(x - 1, y - 1)
-						|| toBeConsumed.contains(new Point(x - 1, y - 1))) {
+						|| toBeConsumed.contains(getTempPoint(x - 1, y - 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
 				if (false == contains(x + 1, y - 1)
-						|| toBeConsumed.contains(new Point(x + 1, y - 1))) {
+						|| toBeConsumed.contains(getTempPoint(x + 1, y - 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
@@ -559,12 +572,12 @@ public class RectilinearPixelPoly {
 			} else if (!eastAvail) {
 				// Check top-left and bottom-left
 				if (false == contains(x - 1, y + 1)
-						|| toBeConsumed.contains(new Point(x - 1, y + 1))) {
+						|| toBeConsumed.contains(getTempPoint(x - 1, y + 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
 				if (false == contains(x - 1, y - 1)
-						|| toBeConsumed.contains(new Point(x - 1, y - 1))) {
+						|| toBeConsumed.contains(getTempPoint(x - 1, y - 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
@@ -574,12 +587,12 @@ public class RectilinearPixelPoly {
 			} else if (!southAvail) {
 				// Check top-left and top-right
 				if (false == contains(x - 1, y + 1)
-						|| toBeConsumed.contains(new Point(x - 1, y + 1))) {
+						|| toBeConsumed.contains(getTempPoint(x - 1, y + 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
 				if (false == contains(x + 1, y + 1)
-						|| toBeConsumed.contains(new Point(x + 1, y + 1))) {
+						|| toBeConsumed.contains(getTempPoint(x + 1, y + 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
@@ -590,12 +603,12 @@ public class RectilinearPixelPoly {
 			} else if (!westAvail) {
 				// Check top-right and bottom-right
 				if (false == contains(x + 1, y + 1)
-						|| toBeConsumed.contains(new Point(x + 1, y + 1))) {
+						|| toBeConsumed.contains(getTempPoint(x + 1, y + 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
 				if (false == contains(x + 1, y - 1)
-						|| toBeConsumed.contains(new Point(x + 1, y - 1))) {
+						|| toBeConsumed.contains(getTempPoint(x + 1, y - 1))) {
 					log.exiting(className, "isConsumable", false);
 					return false;
 				}
@@ -638,7 +651,7 @@ public class RectilinearPixelPoly {
 			// Check if the original polygon would still be contiguous if we
 			// consumed this point
 			if (contains(x2, y2)
-					&& false == toBeConsumed.contains(new Point(x2, y2))) {
+					&& false == toBeConsumed.contains(getTempPoint(x2, y2))) {
 				log.exiting(className, "isConsumable", true);
 				return true;
 			}
@@ -661,6 +674,14 @@ public class RectilinearPixelPoly {
 							+ toBeConsumed.size() + ", avail:" + getArea());
 
 		throw new IllegalAccessError("How did we get here?!");
+	}
+
+	private static final Point tempPoint = new Point();
+
+	public static Point getTempPoint(int x, int y) {
+		tempPoint.x = x;
+		tempPoint.y = y;
+		return tempPoint;
 	}
 
 	public String toString() {
