@@ -70,10 +70,12 @@ public class DataLoader {
 	private GregorianCalendar mTempCalendar = new GregorianCalendar();
 
 	private static final String dataFileName = "sorted_data_by_mysql.tsv";
-	private static final int xScaleFactor = 104; // (822600-817400)/50
+	private static int xScaleFactor = 104; // (822600-817400)/50
 	private static final int xBase = 817400;
-	private static final int yScaleFactor = 70; // (441400-437900)/50
+	private static final int xRange = 822600 - 817400;
+	private static int yScaleFactor = 70; // (441400-437900)/50
 	private static final int yBase = 437900;
+	private static final int yRange = 441400 - 437900;
 
 	/**
 	 * Note that the passed {@link HourFilter} is substantially different than
@@ -98,8 +100,11 @@ public class DataLoader {
 	 */
 	@SuppressWarnings("hiding")
 	public DataLoader(TimeSlice sliceSlize, YearFilter yf, MonthFilter mf,
-			DayFilter df, HourFilter hf) {
+			DayFilter df, HourFilter hf, int desiredWidth, int desiredHeight) {
 		mSliceSize = sliceSlize;
+
+		yScaleFactor = yRange / desiredHeight;
+		xScaleFactor = xRange / desiredWidth;
 
 		try {
 			mInputFile = new BufferedReader(new FileReader(dataFileName));
@@ -183,8 +188,8 @@ public class DataLoader {
 
 				long time = Long.parseLong(line.split("\t")[0]) * 1000;
 				mTempCalendar.setTimeInMillis(time);
-				//System.out.println("Checking "
-				//		+ mTempCalendar.getTime().toLocaleString());
+				// System.out.println("Checking "
+				// + mTempCalendar.getTime().toLocaleString());
 				if (passesDayMonthYearTimeFilters(time)) {
 					mInputFile.reset();
 					return;
@@ -196,7 +201,7 @@ public class DataLoader {
 			}
 		}
 	}
-	
+
 	private boolean passesDayMonthYearTimeFilters(long timeStamp) {
 		mTempCalendar.setTimeInMillis(timeStamp);
 
@@ -211,8 +216,10 @@ public class DataLoader {
 	 * 
 	 * @param r
 	 * @return 0 if pixels were read and added, 1 if the end of the file was
-	 *         reached (whether or not pixels were actually added is
-	 *         unreported), -1 if there was an error (such as an IO exception)
+	 *         reached (whether or not pixels were actually added is unreported)
+	 *         or we have reached the end of the available data (bascally,
+	 *         normal termination), -1 if there was an error (such as an IO
+	 *         exception)
 	 */
 	public int addPixels(Regions r) {
 		String nextLine = null;
@@ -231,17 +238,9 @@ public class DataLoader {
 				return -1;
 			}
 
-			// Check filters
+			// Check current time slice
 			String[] values = nextLine.split("\t");
 			long timeStamp = Long.parseLong(values[0]) * 1000;
-			if (passesTimeFilters(timeStamp) == false) {
-				//System.out.println("Time of "
-				//		+ mTempCalendar.getTime().toLocaleString()
-				//		+ " didn't pass filters");
-				continue;
-			}
-
-			// Check current time slice
 			if (isInCurrentTimeSlice(timeStamp) == false) {
 				try {
 					mInputFile.reset();
@@ -251,6 +250,20 @@ public class DataLoader {
 				updateCurrentTimeSlice();
 				return 0;
 			}
+
+			// Check filters
+
+			if (passesDayMonthYearTimeFilters(timeStamp) == false) {
+				// Are we before or after
+				mTempCalendar.setTimeInMillis(timeStamp);
+				if (mTempCalendar.after(mRangeEnd))
+					return 1;
+				else
+					continue;
+			}
+
+			if (passesHourFilter(timeStamp) == false)
+				continue;
 
 			// Add point :D
 			double x = Double.parseDouble(values[2]) - xBase;
@@ -341,17 +354,14 @@ public class DataLoader {
 	}
 
 	/**
-	 * Checks if the passed timestamp passes all filters
+	 * Checks if the passed timestamp passes the hour filter
 	 * 
 	 * @param timeStamp
 	 * @return
 	 */
-	private boolean passesTimeFilters(long timeStamp) {
+	private boolean passesHourFilter(long timeStamp) {
 
 		mTempCalendar.setTimeInMillis(timeStamp);
-
-		if (mTempCalendar.before(mRangeStart) || mTempCalendar.after(mRangeEnd))
-			return false;
 
 		int hour = mTempCalendar.get(Calendar.HOUR_OF_DAY);
 		if (hour < mHourFilter.startHour || hour > mHourFilter.endHour)
