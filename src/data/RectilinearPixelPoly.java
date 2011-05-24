@@ -27,6 +27,7 @@ public class RectilinearPixelPoly {
 	static final Logger log = Logger.getLogger(RectilinearPixelPoly.class
 			.getName());
 	static final String className = RectilinearPixelPoly.class.getName();
+	static final boolean debugConsumeArea = false;
 
 	HashSet<Point> mPoints = new HashSet<Point>();
 	Point temp = new Point();
@@ -89,7 +90,6 @@ public class RectilinearPixelPoly {
 			return mPoints;
 		}
 
-
 		// TODO this is currently very wasteful in terms of memory. Keeping
 		// track of all the pointers 2x is significantly costly. However, I need
 		// the isConsumable method to be *very* fast, and it calls contains on
@@ -116,11 +116,11 @@ public class RectilinearPixelPoly {
 		Graphics g = image.getGraphics();
 		Point lastCur = null;
 		int imageID = 0;
-		boolean debug = false;
 
 		int i = 0;
 		int lastIterationListSize = 0;
 		Point cur = null;
+		int minimumIndex = 0;
 
 		while (consumablePoints.size() < amountOfArea) {
 
@@ -144,43 +144,46 @@ public class RectilinearPixelPoly {
 				lastIterationListSize = consumablePoints.size();
 			}
 
-			if (cur == lastCur) {
-				// one extra pixel has been painted yellow
-			} else {
-				// write out old image, repaint entire image, color all consumed
-				// pixels green, color current red
-				
-				StringBuilder name = new StringBuilder("images/consume");
-				if (imageID < 10)
-					name.append("000").append(imageID).append(".png");
-				else if (imageID > 9 && imageID < 100)
-					name.append("00").append(imageID).append(".png");
-				else if (imageID > 99  && imageID < 1000)
-					name.append("0").append(imageID).append(".png");
-				else
-					name.append(imageID).append(".png");
+			if (debugConsumeArea) {
+				if (cur == lastCur) {
+					// one extra pixel has been painted yellow
+				} else {
+					// write out old image, repaint entire image, color all
+					// consumed
+					// pixels green, color current red
 
-				try {
-					File f = new File(name.toString());
-					ImageIO.write(image, "png", f);
-				} catch (IOException e) {
-					e.printStackTrace();
+					StringBuilder name = new StringBuilder("images/consume");
+					if (imageID < 10)
+						name.append("000").append(imageID).append(".png");
+					else if (imageID > 9 && imageID < 100)
+						name.append("00").append(imageID).append(".png");
+					else if (imageID > 99 && imageID < 1000)
+						name.append("0").append(imageID).append(".png");
+					else
+						name.append(imageID).append(".png");
+
+					try {
+						File f = new File(name.toString());
+						ImageIO.write(image, "png", f);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+
+					image = mRegionManager.getDebugImage(this);
+					g = image.getGraphics();
+
+					g.setColor(Color.GREEN);
+					for (Point p : consumablePoints)
+						g.drawLine(p.x, p.y, p.x, p.y);
+
+					g.setColor(Color.RED);
+					g.drawLine(cur.x, cur.y, cur.x, cur.y);
+					lastCur = cur;
+
+					imageID++;
 				}
-
-				image = mRegionManager.getDebugImage(this);
-				g = image.getGraphics();
-
-				g.setColor(Color.GREEN);
-				for (Point p : consumablePoints)
-					g.drawLine(p.x, p.y, p.x, p.y);
-				
-				g.setColor(Color.RED);
-				g.drawLine(cur.x, cur.y, cur.x, cur.y);
-				lastCur = cur;
-				
-				imageID++;
+				g.setColor(Color.YELLOW);
 			}
-			g.setColor(Color.YELLOW);
 
 			log.finest("Checking neighbors of point " + cur
 					+ " for consumability");
@@ -189,29 +192,29 @@ public class RectilinearPixelPoly {
 				consumablePoints.add(new Point(cur.x, cur.y - 1));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
-				if (debug)
+				if (debugConsumeArea)
 					g.drawLine(cur.x, cur.y - 1, cur.x, cur.y - 1);
-				i = 0;
+				i = minimumIndex;
 				continue;
 			}
 			if (isConsumable(cur.x + 1, cur.y, consumablePointsCopy)) {
 				consumablePoints.add(new Point(cur.x + 1, cur.y));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
-				if (debug)
+				if (debugConsumeArea)
 					g.drawLine(cur.x + 1, cur.y, cur.x + 1, cur.y);
 
-				i = 0;
+				i = minimumIndex;
 				continue;
 			}
 			if (isConsumable(cur.x, cur.y + 1, consumablePointsCopy)) {
 				consumablePoints.add(new Point(cur.x, cur.y + 1));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
-				if (debug)
+				if (debugConsumeArea)
 					g.drawLine(cur.x, cur.y + 1, cur.x, cur.y + 1);
 
-				i = 0;
+				i = minimumIndex;
 				continue;
 
 			}
@@ -219,19 +222,42 @@ public class RectilinearPixelPoly {
 				consumablePoints.add(new Point(cur.x - 1, cur.y));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
-				if (debug)
+				if (debugConsumeArea)
 					g.drawLine(cur.x - 1, cur.y, cur.x - 1, cur.y);
-				i = 0;
+				i = minimumIndex;
 				continue;
 			}
 
-			// TODO I could make the above significantly faster if I kept a
-			// 'minimum' i value that we reset to, instead of constantly
-			// resetting to 0. The 'minimum' could be incremented by one each
-			// time we make it through the entire set of 4 if statements,
-			// because we know that all possible consumable points for that
-			// point have been considered. I think there are some edge cases
-			// though, so I'm not implementing the optimization right now
+			// If we are at the point currently closest to the origin that has
+			// not been fully consumed, then we want to check if that point has
+			// (as of now) been fully consumed. If it has, then we never have to
+			// check this point again
+			if (i == minimumIndex) {
+				// Is consumable checks based on the current state. We need to
+				// check based on the final state of the transformation e.g. for
+				// each neighbor we check if it will be consumed, or if it is
+				// impossible to ever consume that neighbor because we don't own
+				// it
+				boolean north = consumablePointsCopy.contains(getTempPoint(
+						cur.x, cur.y + 1))
+						|| false == mPoints.contains(getTempPoint(cur.x,
+								cur.y + 1));
+				boolean south = consumablePointsCopy.contains(getTempPoint(
+						cur.x, cur.y - 1))
+						|| false == mPoints.contains(getTempPoint(cur.x,
+								cur.y - 1));
+				boolean east = consumablePointsCopy.contains(getTempPoint(
+						cur.x - 1, cur.y))
+						|| false == mPoints.contains(getTempPoint(cur.x - 1,
+								cur.y));
+				boolean west = consumablePointsCopy.contains(getTempPoint(
+						cur.x + 1, cur.y))
+						|| false == mPoints.contains(getTempPoint(cur.x + 1,
+								cur.y));
+
+				if (north && south && east && west)
+					minimumIndex++;
+			}
 
 			++i;
 
