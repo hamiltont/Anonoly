@@ -1,7 +1,12 @@
 package data;
 
+import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,6 +17,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.imageio.ImageIO;
 
 import main.Main;
 
@@ -82,6 +89,7 @@ public class RectilinearPixelPoly {
 			return mPoints;
 		}
 
+
 		// TODO this is currently very wasteful in terms of memory. Keeping
 		// track of all the pointers 2x is significantly costly. However, I need
 		// the isConsumable method to be *very* fast, and it calls contains on
@@ -102,10 +110,19 @@ public class RectilinearPixelPoly {
 			return consumablePoints;
 		}
 
+		// All the vars here have to do with debugging
+		BufferedImage image = mRegionManager.getDebugImage(this);
+		Graphics g = image.getGraphics();
+		Point lastCur = null;
+		int imageID = 0;
+		boolean debug = true;
+
 		int i = 0;
 		int lastIterationListSize = 0;
+		Point cur = null;
+
 		while (consumablePoints.size() < amountOfArea) {
-			Point cur = null;
+
 			try {
 				cur = consumablePoints.get(i);
 			} catch (IndexOutOfBoundsException ide) {
@@ -126,6 +143,44 @@ public class RectilinearPixelPoly {
 				lastIterationListSize = consumablePoints.size();
 			}
 
+			if (cur == lastCur) {
+				// one extra pixel has been painted yellow
+			} else {
+				// write out old image, repaint entire image, color all consumed
+				// pixels green, color current red
+				
+				StringBuilder name = new StringBuilder("images/consume");
+				if (imageID < 10)
+					name.append("000").append(imageID).append(".png");
+				else if (imageID > 9 && imageID < 100)
+					name.append("00").append(imageID).append(".png");
+				else if (imageID > 99  && imageID < 1000)
+					name.append("0").append(imageID).append(".png");
+				else
+					name.append(imageID).append(".png");
+
+				try {
+					File f = new File(name.toString());
+					ImageIO.write(image, "png", f);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+				image = mRegionManager.getDebugImage(this);
+				g = image.getGraphics();
+
+				g.setColor(Color.GREEN);
+				for (Point p : consumablePoints)
+					g.drawLine(p.x, p.y, p.x, p.y);
+				
+				g.setColor(Color.RED);
+				g.drawLine(cur.x, cur.y, cur.x, cur.y);
+				lastCur = cur;
+				
+				imageID++;
+			}
+			g.setColor(Color.YELLOW);
+
 			log.finest("Checking neighbors of point " + cur
 					+ " for consumability");
 
@@ -133,6 +188,8 @@ public class RectilinearPixelPoly {
 				consumablePoints.add(new Point(cur.x, cur.y - 1));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
+				if (debug)
+					g.drawLine(cur.x, cur.y - 1, cur.x, cur.y - 1);
 				i = 0;
 				continue;
 			}
@@ -140,6 +197,9 @@ public class RectilinearPixelPoly {
 				consumablePoints.add(new Point(cur.x + 1, cur.y));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
+				if (debug)
+					g.drawLine(cur.x + 1, cur.y, cur.x + 1, cur.y);
+
 				i = 0;
 				continue;
 			}
@@ -147,6 +207,9 @@ public class RectilinearPixelPoly {
 				consumablePoints.add(new Point(cur.x, cur.y + 1));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
+				if (debug)
+					g.drawLine(cur.x, cur.y + 1, cur.x, cur.y + 1);
+
 				i = 0;
 				continue;
 
@@ -155,6 +218,8 @@ public class RectilinearPixelPoly {
 				consumablePoints.add(new Point(cur.x - 1, cur.y));
 				consumablePointsCopy.add(consumablePoints.get(consumablePoints
 						.size() - 1));
+				if (debug)
+					g.drawLine(cur.x - 1, cur.y, cur.x - 1, cur.y);
 				i = 0;
 				continue;
 			}
@@ -303,6 +368,13 @@ public class RectilinearPixelPoly {
 		}
 
 		log.fine("Found an appropriate starting edge: " + edge);
+
+		try {
+			ImageIO.write(mRegionManager.getDebugImage(this), "png", new File(
+					"images/split-start.png"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 		Collection<Point> points = consumeArea(amountOfArea, edge);
 
