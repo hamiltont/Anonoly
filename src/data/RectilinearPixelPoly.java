@@ -103,6 +103,7 @@ public class RectilinearPixelPoly {
 			// TODO - better understanding of this section
 			log.finest("Start point is consumable");
 			consumablePoints.add(startPoint);
+			consumablePointsCopy.add(startPoint);
 		} else {
 			log
 					.info("Unable to consume area - the startPoint was not consumable");
@@ -115,7 +116,7 @@ public class RectilinearPixelPoly {
 		Graphics g = image.getGraphics();
 		Point lastCur = null;
 		int imageID = 0;
-		boolean debug = true;
+		boolean debug = false;
 
 		int i = 0;
 		int lastIterationListSize = 0;
