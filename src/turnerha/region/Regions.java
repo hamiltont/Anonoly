@@ -1,4 +1,4 @@
-package data;
+package turnerha.region;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -13,7 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.imageio.ImageIO;
+import turnerha.polygon.RectilinearPixelPoly;
+
 
 public class Regions {
 	List<Region> mRegions = new ArrayList<Region>();

@@ -1,4 +1,4 @@
-package main;
+package turnerha;
 
 import java.awt.Dimension;
 import java.awt.Point;
@@ -17,14 +17,14 @@ import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
-import main.DataLoader.DayFilter;
-import main.DataLoader.HourFilter;
-import main.DataLoader.MonthFilter;
-import main.DataLoader.YearFilter;
-
-import data.RectilinearPixelPoly;
-import data.Region;
-import data.Regions;
+import turnerha.data.DataLoader;
+import turnerha.data.DataLoader.DayFilter;
+import turnerha.data.DataLoader.HourFilter;
+import turnerha.data.DataLoader.MonthFilter;
+import turnerha.data.DataLoader.YearFilter;
+import turnerha.polygon.RectilinearPixelPoly;
+import turnerha.region.Region;
+import turnerha.region.Regions;
 
 public class Main {
 

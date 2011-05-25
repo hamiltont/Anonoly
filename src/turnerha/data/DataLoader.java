@@ -1,4 +1,4 @@
-package main;
+package turnerha.data;
 
 import java.awt.Point;
 import java.io.BufferedReader;
@@ -8,7 +8,8 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
-import data.Regions;
+import turnerha.region.Regions;
+
 
 public class DataLoader {
 
@@ -22,8 +23,8 @@ public class DataLoader {
 	 * 
 	 */
 	public static class YearFilter {
-		int startYear;
-		int endYear;
+		public int startYear;
+		public int endYear;
 	}
 
 	/**
@@ -33,8 +34,8 @@ public class DataLoader {
 	 * 
 	 */
 	public static class MonthFilter {
-		int startMonth;
-		int endMonth;
+		public int startMonth;
+		public int endMonth;
 	}
 
 	/**
@@ -44,8 +45,8 @@ public class DataLoader {
 	 * 
 	 */
 	public static class DayFilter {
-		int startDay;
-		int endDay;
+		public int startDay;
+		public int endDay;
 	}
 
 	/**
@@ -56,8 +57,8 @@ public class DataLoader {
 	 * 
 	 */
 	public static class HourFilter {
-		int startHour;
-		int endHour;
+		public int startHour;
+		public int endHour;
 	}
 
 	private TimeSlice mSliceSize;

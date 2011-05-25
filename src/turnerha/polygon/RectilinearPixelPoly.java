@@ -1,4 +1,4 @@
-package data;
+package turnerha.polygon;
 
 import java.awt.Color;
 import java.awt.Graphics;
@@ -18,6 +18,8 @@ import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
+import turnerha.region.Region;
+
 public class RectilinearPixelPoly {
 
 	static final Logger log = Logger.getLogger(RectilinearPixelPoly.class
@@ -26,11 +28,11 @@ public class RectilinearPixelPoly {
 	static final boolean debugConsumeArea = false;
 	static final boolean debugSplit = false;
 
-	HashSet<Point> mPoints = new HashSet<Point>();
+	public HashSet<Point> mPoints = new HashSet<Point>();
 	Point temp = new Point();
 	Region mRegion;
 
-	protected RectilinearPixelPoly(Collection<Point> initial) {
+	public RectilinearPixelPoly(Collection<Point> initial) {
 		log.entering(getClass().getName(), "ctor");
 
 		if (initial.size() == 0)
