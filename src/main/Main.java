@@ -23,16 +23,18 @@ import main.DataLoader.MonthFilter;
 import main.DataLoader.YearFilter;
 
 import data.RectilinearPixelPoly;
+import data.Region;
 import data.Regions;
 
 public class Main {
 
+	public static final int K = 4000;
+	public static final int regionXsize = 100;
+	public static final int regionYsize = 100;
+
 	public static final Logger log = Logger.getLogger(Main.class
 			.getCanonicalName());
-
-	public static final int K = 1500;
 	static List<Point> randomReadings = new ArrayList<Point>();
-
 	static YearFilter yf = new YearFilter();
 	static MonthFilter mf = new MonthFilter();
 	static DayFilter df = new DayFilter();
@@ -40,18 +42,20 @@ public class Main {
 
 	static {
 		yf.startYear = 2003;
-		yf.endYear = 2003;
 		mf.startMonth = 9;
-		mf.endMonth = 10;
 		df.startDay = 24;
+
+		yf.endYear = 2003;
+		mf.endMonth = 10;
 		df.endDay = 31;
+
 		hf.startHour = 11;
 		hf.endHour = 17;
 	}
 
 	public static void main(String[] args) {
 
-		Regions r = new Regions(new Dimension(50, 50));
+		Regions r = new Regions(new Dimension(regionXsize, regionYsize));
 		r.resetDataReadingCount();
 		r.resetRegionUsage();
 
@@ -65,7 +69,7 @@ public class Main {
 		// randomReadings.add(new Point(x, y));
 
 		DataLoader loader = new DataLoader(DataLoader.TimeSlice.Day, yf, mf,
-				df, hf);
+				df, hf, regionXsize, regionYsize);
 		log.info("Generated Random Data Reading Locations");
 
 		int cycle = 0;
@@ -79,7 +83,14 @@ public class Main {
 			// moveReadings(rand, randomReadings);
 			// for (Point p : randomReadings)
 			// r.addDataReading(p);
-			loader.addPixels(r);
+			int result = loader.addPixels(r);
+			if (result == -1) {
+				log.severe("Error reading data file, aborting");
+				return;
+			} else if (result == 1) {
+				log.info("End of data file reached");
+				return;
+			}
 
 			log.info("Added data reading locations");
 
@@ -129,37 +140,39 @@ public class Main {
 		}
 	}
 
-	public static void runAlgorithm(Regions reg) {
-		List<RectilinearPixelPoly> regions = reg.getRegions();
+	public static void runAlgorithm(Regions regions) {
+		List<Region> regionsList = regions.getRegions();
 
 		// We use a copy of the original list so that Java does not complain
 		// about concurrent modification exceptions (our calls to regions inside
 		// of this loop can end up modifying the list aka a split will modify
 		// the list)
-		List<RectilinearPixelPoly> regionsCopy = new ArrayList<RectilinearPixelPoly>(
-				regions);
+		List<Region> regionsCopy = new ArrayList<Region>(regionsList);
 
-		for (RectilinearPixelPoly poly : regionsCopy) {
+		for (Region region : regionsCopy) {
 
-			if (poly.getIsUsed())
+			if (region.getIsUsed())
 				continue;
 
-			log.info("Next region: " + poly);
+			RectilinearPixelPoly regionPolygon = (RectilinearPixelPoly) region
+					.getPolyImpl();
 
-			int count = poly.getDataReadingCount();
+			log.info("Next region: " + region);
+
+			int count = region.getDataReadingCount();
 			if (count == K) {
 				log.info("Needs no attention");
-				poly.setIsUsed(true);
+				region.setIsUsed(true);
 				continue;
 			}
 
 			// We are not large enough, time to merge!
 			if (count < K) {
 				log.info("Needs to merge");
-				List<RectilinearPixelPoly> neighbors = reg.findNeighbors(poly);
+				List<Region> neighbors = regions.findNeighborsOf(region);
 
 				// Remove all used neighbors
-				Iterator<RectilinearPixelPoly> it = neighbors.iterator();
+				Iterator<Region> it = neighbors.iterator();
 				while (it.hasNext())
 					if (it.next().getIsUsed())
 						it.remove();
@@ -169,25 +182,28 @@ public class Main {
 				log.fine("Sorted neighbors");
 
 				if (log.isLoggable(Level.FINEST))
-					for (RectilinearPixelPoly p : neighbors)
+					for (Region p : neighbors)
 						log.finest("\t" + p);
 
-				int desiredChange = getDesiredChange(K - count, poly.getArea());
+				int desiredChange = getDesiredChange(K - count, regionPolygon
+						.getArea());
 				log.fine("Needs to grow by " + desiredChange);
 
-				for (RectilinearPixelPoly resource : neighbors) {
-					log.finest("Considering Neighbor " + resource);
+				for (Region neighbor : neighbors) {
+					log.finest("Considering Neighbor " + neighbor);
+					RectilinearPixelPoly neighborPoly = (RectilinearPixelPoly) neighbor
+							.getPolyImpl();
 
-					if (resource.getDataReadingCount() + count <= K)
-						desiredChange = resource.getArea();
+					if (neighbor.getDataReadingCount() + count <= K)
+						desiredChange = neighborPoly.getArea();
 
 					// If desired change is greater than or equal to the area
 					// available, we can rest assured that the consumeArea
 					// method will not fail
-					if (desiredChange >= resource.getArea()) {
-						Collection<Point> points = resource.consumeArea(
+					if (desiredChange >= neighborPoly.getArea()) {
+						Collection<Point> points = neighborPoly.consumeArea(
 								desiredChange, null);
-						poly.merge(points);
+						regionPolygon.merge(points);
 						desiredChange -= points.size();
 
 						log.fine("Got " + points.size()
@@ -199,21 +215,22 @@ public class Main {
 						int origDesiredChange = desiredChange;
 						do {
 
-							Point start = poly.getStartPoint(resource);
+							Point start = regionPolygon.getStartPoint(neighborPoly);
 							Collection<Point> consumable = null;
 							if (start == null) {
 								log
 										.info("Unable to find a start point, so consuming entire polygon");
-								log.info("This gives us " + resource.getArea()
+								log.info("This gives us "
+										+ neighborPoly.getArea()
 										+ " pixels when we only wanted "
 										+ desiredChange);
-								consumable = resource.consumeArea(resource
-										.getArea(), null);
+								consumable = neighborPoly.consumeArea(
+										neighborPoly.getArea(), null);
 							} else
-								consumable = resource.consumeArea(
+								consumable = neighborPoly.consumeArea(
 										desiredChange, start);
 							consumedSoFar += consumable.size();
-							poly.merge(consumable);
+							regionPolygon.merge(consumable);
 							desiredChange -= consumable.size();
 
 						} while (consumedSoFar < origDesiredChange);
@@ -224,7 +241,7 @@ public class Main {
 					}
 
 					// Mark the region we used as used
-					resource.setIsUsed(true);
+					neighbor.setIsUsed(true);
 
 					// If we fully eat a poly we can shrink below our expected
 					// change
@@ -233,7 +250,7 @@ public class Main {
 
 				}
 
-				poly.setIsUsed(true);
+				region.setIsUsed(true);
 
 				continue;
 			}
@@ -244,6 +261,8 @@ public class Main {
 			if (count >= (K * 2)) {
 				log.info("Needs to shrink");
 				int partitions = getNumberOfPartitions(count);
+				RectilinearPixelPoly poly = (RectilinearPixelPoly) region
+						.getPolyImpl();
 				int areaPerPartition = poly.getArea() / partitions;
 				log
 						.fine("Needs to be cut into " + partitions
@@ -263,7 +282,7 @@ public class Main {
 					--partitions;
 				}
 
-				poly.setIsUsed(true);
+				region.setIsUsed(true);
 			}
 
 		} // End r.hasNext
@@ -314,10 +333,10 @@ public class Main {
 		throw new IllegalStateException();
 	}
 
-	static Comparator<RectilinearPixelPoly> OptimialityRanking = new Comparator<RectilinearPixelPoly>() {
+	static Comparator<Region> OptimialityRanking = new Comparator<Region>() {
 
 		@Override
-		public int compare(RectilinearPixelPoly o1, RectilinearPixelPoly o2) {
+		public int compare(Region o1, Region o2) {
 			int rc1 = o1.getDataReadingCount();
 			int rc2 = o2.getDataReadingCount();
 

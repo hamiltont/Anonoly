@@ -7,28 +7,30 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import javax.imageio.ImageIO;
 
 public class Regions {
-	// TODO create Region class, separate the polygon representation (e.g.
-	// RectilinearPixelPoly) from the data that makes this a 'region' e.g. the
-	// input count, etc. This will make it easy to change the underlying polygon
-	// representation
-	List<RectilinearPixelPoly> mRegions = new ArrayList<RectilinearPixelPoly>();
+	List<Region> mRegions = new ArrayList<Region>();
 
 	Rectangle mBorder;
 
 	public Regions(Dimension totalArea) {
-		List<Point> startingPoints = new ArrayList<Point>(totalArea.width
+		Set<Point> startingPoints = new HashSet<Point>(totalArea.width
 				* totalArea.height);
 		for (int x = 0; x < totalArea.width; x++)
 			for (int y = 0; y < totalArea.height; y++)
 				startingPoints.add(new Point(x, y));
 
-		createRegion(startingPoints);
+		RectilinearPixelPoly firstPoly = new RectilinearPixelPoly(
+				startingPoints);
+		Region r = new Region(firstPoly, this);
+		addRegion(r);
 
 		mBorder = new Rectangle(totalArea.width - 1, totalArea.height - 1);
 	}
@@ -45,63 +47,62 @@ public class Regions {
 		return mBorder;
 	}
 
-	protected void removeRegion(RectilinearPixelPoly poly) {
+	protected void removeRegion(Region poly) {
 		mRegions.remove(poly);
 	}
 
-	protected void createRegion(Collection<Point> points) {
-		RectilinearPixelPoly p = new RectilinearPixelPoly(points, this);
-		mRegions.add(p);
+	protected void addRegion(Region r) {
+		mRegions.add(r);
 	}
 
 	public void resetRegionUsage() {
-		for (RectilinearPixelPoly p : mRegions)
+		for (Region p : mRegions)
 			p.setIsUsed(false);
 	}
 
 	public void resetDataReadingCount() {
-		for (RectilinearPixelPoly p : mRegions)
+		for (Region p : mRegions)
 			p.resetDataReadingCount();
 	}
 
 	public void addDataReading(Point location) {
-		for (RectilinearPixelPoly p : mRegions)
-			if (p.contains(location)) {
+		for (Region p : mRegions)
+			if (((RectilinearPixelPoly) p.getPolyImpl()).contains(location)) {
 				p.addDataReading();
 				return;
 			}
 
-		(new IllegalStateException(
-				"None of the regions contained the given location"))
-				.printStackTrace();
+		
+		
+		throw new IllegalStateException(
+				"None of the regions contained the given location");
 	}
 
-	public List<RectilinearPixelPoly> getRegions() {
+	public List<Region> getRegions() {
 		return mRegions;
 	}
 
-	public void orderRegions(Comparator<RectilinearPixelPoly> comp) {
+	public void orderRegions(Comparator<Region> comp) {
 		Collections.sort(mRegions, comp);
 
 		System.out.println("Regions were ranked: ");
 		System.out.print("\t");
-		for (RectilinearPixelPoly p : mRegions)
+		for (Region p : mRegions)
 			System.out.print("" + p.getDataReadingCount() + ", ");
 		System.out.println();
 	}
 
-	public List<RectilinearPixelPoly> findNeighbors(RectilinearPixelPoly center) {
-		List<RectilinearPixelPoly> result = new ArrayList<RectilinearPixelPoly>();
-		for (RectilinearPixelPoly p : mRegions)
+	public List<Region> findNeighborsOf(Region center) {
+		List<Region> result = new ArrayList<Region>();
+		for (Region p : mRegions)
 			if (p.touches(center))
 				result.add(p);
 
 		return result;
 	}
 
-	
 	Color[] colors = null;
-	
+
 	public BufferedImage getDebugBorderImage(RectilinearPixelPoly... regions) {
 		BufferedImage bi = new BufferedImage(mBorder.width + 1,
 				mBorder.height + 1, BufferedImage.TYPE_INT_RGB);
@@ -121,10 +122,11 @@ public class Regions {
 			// g.drawLine(p.x, p.y, p.x, p.y);
 		}
 
-		return bi;	
+		return bi;
 	}
-	
+
 	public BufferedImage getDebugImage(RectilinearPixelPoly... regions) {
+		
 		BufferedImage bi = new BufferedImage(mBorder.width + 1,
 				mBorder.height + 1, BufferedImage.TYPE_INT_RGB);
 		Graphics g = bi.getGraphics();
@@ -137,13 +139,9 @@ public class Regions {
 			g.setColor(colors[color++ % colors.length]);
 			for (Point p : poly.mPoints)
 				g.drawLine(p.x, p.y, p.x, p.y);
-
-			// g.setColor(Color.black);
-			// for (Point p : poly.getBorder())
-			// g.drawLine(p.x, p.y, p.x, p.y);
 		}
 
-		return bi;	
+		return bi;
 	}
 
 	public BufferedImage getImage() {
@@ -155,14 +153,10 @@ public class Regions {
 			generateColors();
 		int color = 0;
 
-		for (RectilinearPixelPoly poly : mRegions) {
+		for (Region poly : mRegions) {
 			g.setColor(colors[color++ % colors.length]);
-			for (Point p : poly.mPoints)
+			for (Point p : ((RectilinearPixelPoly) poly.getPolyImpl()).mPoints)
 				g.drawLine(p.x, p.y, p.x, p.y);
-
-			// g.setColor(Color.black);
-			// for (Point p : poly.getBorder())
-			// g.drawLine(p.x, p.y, p.x, p.y);
 		}
 
 		return bi;

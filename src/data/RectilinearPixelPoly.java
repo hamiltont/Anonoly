@@ -3,7 +3,6 @@ package data;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -12,7 +11,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -20,29 +18,28 @@ import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
-import main.Main;
-
 public class RectilinearPixelPoly {
 
 	static final Logger log = Logger.getLogger(RectilinearPixelPoly.class
 			.getName());
 	static final String className = RectilinearPixelPoly.class.getName();
 	static final boolean debugConsumeArea = false;
+	static final boolean debugSplit = false;
 
 	HashSet<Point> mPoints = new HashSet<Point>();
 	Point temp = new Point();
-	boolean mIsUsed = true;
-	int mDataReadings = 0;
-	Regions mRegionManager;
+	Region mRegion;
 
-	protected RectilinearPixelPoly(Collection<Point> initial, Regions manager) {
+	protected RectilinearPixelPoly(Collection<Point> initial) {
 		log.entering(getClass().getName(), "ctor");
 
 		if (initial.size() == 0)
 			throw new IllegalArgumentException();
 
-		mRegionManager = manager;
-		mPoints.addAll(initial);
+		if (initial instanceof HashSet<?>)
+			mPoints = (HashSet<Point>) initial;
+		else
+			mPoints.addAll(initial);
 
 		assert (isContigious());
 	}
@@ -85,7 +82,7 @@ public class RectilinearPixelPoly {
 				startPoint });
 
 		if (amountOfArea >= getArea()) {
-			mRegionManager.removeRegion(this);
+			mRegion.polygonFullyConsumed();
 			log.exiting(className, "consumeArea", "Consuming all");
 			return mPoints;
 		}
@@ -112,7 +109,7 @@ public class RectilinearPixelPoly {
 		}
 
 		// All the vars here have to do with debugging
-		BufferedImage image = mRegionManager.getDebugImage(this);
+		BufferedImage image = mRegion.getDebugImage();
 		Graphics g = image.getGraphics();
 		Point lastCur = null;
 		int imageID = 0;
@@ -169,7 +166,7 @@ public class RectilinearPixelPoly {
 						e.printStackTrace();
 					}
 
-					image = mRegionManager.getDebugImage(this);
+					image = mRegion.getDebugImage();
 					g = image.getGraphics();
 
 					g.setColor(Color.GREEN);
@@ -396,11 +393,13 @@ public class RectilinearPixelPoly {
 
 		log.fine("Found an appropriate starting edge: " + edge);
 
-		try {
-			ImageIO.write(mRegionManager.getDebugImage(this), "png", new File(
-					"images/split-start.png"));
-		} catch (IOException e) {
-			e.printStackTrace();
+		if (debugSplit) {
+			try {
+				ImageIO.write(mRegion.getDebugImage(), "png",
+						new File("images/split-start.png"));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 
 		Collection<Point> points = consumeArea(amountOfArea, edge);
@@ -411,32 +410,12 @@ public class RectilinearPixelPoly {
 
 		assert (isContigious());
 
-		mRegionManager.createRegion(points);
+		RectilinearPixelPoly p = new RectilinearPixelPoly(points);
+		mRegion.newPolygonCreated(p);
 	}
-
-	/**
-	 * Returns all points that are on the border of this polygon, but are not
-	 * touching the perimeter of the entire area that this border is contained
-	 * within (specifically, all points that do not touch the perimeter of
-	 * {@link Regions})
-	 * 
-	 * @return
-	 */
-	public List<Point> getInnerBorder() {
-		List<Point> border = getBorder();
-		Iterator<Point> it = border.iterator();
-		Rectangle b = mRegionManager.getBorderRectangle();
-		int left = b.x;
-		int right = b.x + b.width;
-		int top = b.y;
-		int bottom = b.y + b.height;
-		while (it.hasNext()) {
-			Point p = it.next();
-			if (p.x == left || p.x == right || p.y == top || p.y == bottom)
-				it.remove();
-		}
-
-		return border;
+	
+	public void setRegion(Region r) {
+		mRegion = r;
 	}
 
 	/**
@@ -447,8 +426,6 @@ public class RectilinearPixelPoly {
 	 * 
 	 * @return
 	 */
-	// TODO build ordering comparators so that the returned points are optimized
-	// for certain operations, such as splitting and merging?
 	public List<Point> getBorder() {
 		List<Point> border = new ArrayList<Point>((int) (mPoints.size() * 0.75));
 
@@ -548,25 +525,6 @@ public class RectilinearPixelPoly {
 		return result;
 	}
 
-	public boolean getIsUsed() {
-		return mIsUsed;
-	}
-
-	public void setIsUsed(boolean isIt) {
-		mIsUsed = isIt;
-	}
-
-	protected void addDataReading() {
-		++mDataReadings;
-	}
-
-	protected void resetDataReadingCount() {
-		mDataReadings = 0;
-	}
-
-	public int getDataReadingCount() {
-		return mDataReadings;
-	}
 
 	/**
 	 * Returns if p can be added to the list of consumed points without breaking
@@ -784,37 +742,17 @@ public class RectilinearPixelPoly {
 	}
 
 	public String toString() {
-		StringBuilder b = new StringBuilder("[count=");
-		b.append(mDataReadings);
-		b.append(",area=");
+		StringBuilder b = new StringBuilder("[area=");
 		b.append(getArea());
-		b.append(",isused=");
-		b.append(mIsUsed);
-		b.append(",change=");
-		if (mDataReadings == Main.K)
-			b.append("none]");
-		else if (mDataReadings > Main.K)
-			b.append("shrink]");
-		else
-			b.append("grow]");
+		b.append("]");
 		return b.toString();
 
 	}
 
 	public String toLongString() {
-		StringBuilder b = new StringBuilder("[count=");
-		b.append(mDataReadings);
-		b.append(",area=");
+		StringBuilder b = new StringBuilder("[area=");
 		b.append(getArea());
-		b.append(",change=");
-		if (mDataReadings == Main.K)
-			b.append("none]");
-		else if (mDataReadings > Main.K)
-			b.append("shrink,");
-		else
-			b.append("grow,");
-
-		b.append("points=");
+		b.append(",points=");
 		b.append(mPoints.toString());
 		b.append("]");
 		return b.toString();
