@@ -15,7 +15,6 @@ import java.util.Set;
 
 import turnerha.polygon.RectilinearPixelPoly;
 
-
 public class Regions {
 	List<Region> mRegions = new ArrayList<Region>();
 
@@ -61,22 +60,26 @@ public class Regions {
 			p.setIsUsed(false);
 	}
 
-	public void resetDataReadingCount() {
+	public void resetDataReadingCounts() {
 		for (Region p : mRegions)
 			p.resetDataReadingCount();
 	}
 
-	public void addDataReading(Point location) {
+	public void resetUniqueUsersSeen() {
+		for (Region p : mRegions)
+			p.resetUniqueUsersSeen();
+	}
+
+	public void addDataReading(Point location, String userID) {
 		for (Region p : mRegions)
 			if (((RectilinearPixelPoly) p.getPolyImpl()).contains(location)) {
-				p.addDataReading();
+				p.addDataReadingFrom(userID);
 				return;
 			}
 
-		
-		
-		throw new IllegalStateException(
-				"None of the regions contained the given location");
+		(new IllegalStateException(
+				"None of the regions contained the given location: " + location))
+				.printStackTrace();
 	}
 
 	public List<Region> getRegions() {
@@ -89,7 +92,7 @@ public class Regions {
 		System.out.println("Regions were ranked: ");
 		System.out.print("\t");
 		for (Region p : mRegions)
-			System.out.print("" + p.getDataReadingCount() + ", ");
+			System.out.print("" + p.getUniqueUsersCount() + ", ");
 		System.out.println();
 	}
 
@@ -127,7 +130,7 @@ public class Regions {
 	}
 
 	public BufferedImage getDebugImage(RectilinearPixelPoly... regions) {
-		
+
 		BufferedImage bi = new BufferedImage(mBorder.width + 1,
 				mBorder.height + 1, BufferedImage.TYPE_INT_RGB);
 		Graphics g = bi.getGraphics();

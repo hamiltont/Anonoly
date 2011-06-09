@@ -1,0 +1,15 @@
+As the total size of the dimensional space you are projecting the 
+data readings into diminishes, e.g. Regions gets smaller, the fluctuation
+in number of data readings per cycle tends to increase. This is likely
+due to a combinatorial effect where each small space that has been 
+projected into a single pixel has it's own fluctuation, and once you 
+start combining multiple small fluctuations into a single pixel that 
+pixel has unpredictable and potentially very large fluctuation between
+time cycles. This result can be generalized, and therefore we can claim
+that the best projection will be the one with the smallest granularity 
+in terms of available projection space e.g. if you can map every 1x1 meter
+square into a unique location, then you will likely be able to achieve 
+better k-anonymity results than if you can only map every 10x10 meter
+square into a unique location. 
+
+This may not hold true for some locations or some time slices...

@@ -1,0 +1,14 @@
+# First I read a few rows of the sample data
+> temp = read.table(file=file.choose(),sep="\t",col.names=c("time","id","x","y") )
+
+# Then I extract the column classes 
+> class = sapply(temp,class)
+> class
+     time        id         x         y 
+"integer"  "factor" "numeric" "numeric" 
+
+# Then we read the full dataset
+> associations = read.table(file=file.choose(),sep="\t",colClasses=class,col.names=c("time","id","x","y") )
+
+
+

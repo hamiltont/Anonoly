@@ -1,0 +1,82 @@
+# Discusses how to filter the data to the region used in the kapadia et al. paper
+
+# Extract just the time information
+> times = associations$time
+
+# Convert seconds to time objects
+# Use POSIXct, not lt because lt uses ~5x more memory
+> ct_times = as.POSIXct(times,origin="1970-01-01")
+
+# Define start / end days
+> start = as.POSIXct("2003-08-24")
+> end = as.POSIXct("2003-12-10")
+
+# Filter year/month/day
+> f_times = ct_times[(ct_times - start) > 0]
+> f_times = f_times[(end-f_times) > 0]
+> length(f_times)
+[1] 6142913
+
+
+# Filter hours
+> index = as.POSIXlt(f_times)$hour>=12 & (as.POSIXlt(f_times)$hour<18 | (as.POSIXlt(f_times)$hour==18 & as.POSIXlt(f_times)$min==0 & as.POSIXlt(f_times)$sec==0))
+> length(index)
+[1] 6142913
+> f_times = f_times[index]
+> length(f_times)
+[1] 1500620
+
+
+# Build 'buckets' that equal the timeslice size 
+> 15 * 60
+[1] 900
+> as.numeric(min(f_times))
+[1] 1061740809
+> as.numeric(max(f_times))
+[1] 1071010800
+> bins=seq(1061740809, 1071010800 + 1800, by=900)
+
+# Plot the hist
+> hist(as.numeric(f_times),breaks=bins,main="Associations Per Timeslice For Filtered Data",xlab="Time (in seconds since epoch)",ylab="Number of Associations")
+
+# Note that the histogram of the filtered data contains a huge percentage of 'gaps'
+> data = hist(as.numeric(f_times),breaks=bins)$count
+> length(data)
+[1] 10301
+> length(data[data==0])
+[1] 7620
+
+# These gaps are due to the bin construction method - we are not contructing bins 
+# for *all* 15 minute intervals, and not just for the intervals that exist between
+# 12pm and 6pm. The data has already been filtered to 12-6, so *most* of the bins
+# are empty. 
+# Let's only construct bins for 12pm-6pm next...
+
+> dates = seq.POSIXt(start,end,by="15 min")
+> index = as.POSIXlt(dates)$hour>=12 & (as.POSIXlt(dates)$hour<18 | (as.POSIXlt(dates)$hour==18 & as.POSIXlt(dates)$min==0))
+> length(dates)
+[1] 10373
+> dates = dates[index]
+> length(dates)
+[1] 2700
+> hist(f_times,breaks=dates,freq=TRUE)
+
+# We notice that again we have small gaps in the plot. Examining the data, we see
+# that these gaps are due to the way a histogram is plotted - every bin gets a 
+# column, and therefore there is a bin for the time between 6pm of one day, and 
+# 12pm the next day that has no entries (due to our prior filtering of the data)
+
+# The fix is fairly simple: Just remove all entries for 6pm exactly, and let the bin
+# stretch from 5:45pm of one day to 12pm of the next day. Because there are zero 
+# readings from 6pm-12pm, this equals the counts from 5:45-6pm but looks cleaner
+> index = as.POSIXlt(dates)$hour!=18
+> dates = dates[index]
+# Add back in the last 5:45-6:00pm bin
+> dates = append(dates,as.POSIXct("2003-12-09 18:00:00 EST"))
+> hist(f_times,breaks=dates,freq=TRUE,main="Associations Per Timeslice For Filtered Data",xlab="Time",ylab="Number of Associations")
+
+# Each bin is a column, so the 'larger' bins that mark the end of the day are 
+# a few pixels wider than their 15-minute increment counterparts
+
+
+

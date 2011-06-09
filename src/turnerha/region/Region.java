@@ -5,16 +5,23 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 import turnerha.polygon.RectilinearPixelPoly;
-
 
 public class Region {
 
 	private RectilinearPixelPoly mPoly;
 
 	private boolean mIsUsed = true;
+
+	/** The number of data readings entered in this timeslice */
 	private int mDataReadings = 0;
+
+	/** Unique user ids seen in this timeslice */
+	private List<String> mUsersSeen = new ArrayList<String>();
+
 	private Regions mRegionManager;
 
 	public Region(RectilinearPixelPoly polygon, Regions regionManager) {
@@ -23,8 +30,18 @@ public class Region {
 		mRegionManager = regionManager;
 	}
 
-	protected void addDataReading() {
+	/**
+	 * Increments the total data reading count for this region, and increments
+	 * the unique users count for this region if the passed user ID has not been
+	 * seen
+	 * 
+	 * @param userID
+	 */
+	protected void addDataReadingFrom(String userID) {
 		++mDataReadings;
+
+		if (false == mUsersSeen.contains(userID))
+			mUsersSeen.add(userID);
 	}
 
 	protected void resetDataReadingCount() {
@@ -33,6 +50,14 @@ public class Region {
 
 	public int getDataReadingCount() {
 		return mDataReadings;
+	}
+
+	public void resetUniqueUsersSeen() {
+		mUsersSeen.clear();
+	}
+
+	public int getUniqueUsersCount() {
+		return mUsersSeen.size();
 	}
 
 	public boolean getIsUsed() {

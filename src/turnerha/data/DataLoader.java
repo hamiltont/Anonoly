@@ -10,7 +10,6 @@ import java.util.GregorianCalendar;
 
 import turnerha.region.Regions;
 
-
 public class DataLoader {
 
 	public enum TimeSlice {
@@ -73,10 +72,10 @@ public class DataLoader {
 	private static final String dataFileName = "sorted_data_by_mysql.tsv";
 	private static int xScaleFactor = 104; // (822600-817400)/50
 	private static final int xBase = 817400;
-	private static final int xRange = 822600 - 817400;
+	private static final double xRange = 822600 - 817400;
 	private static int yScaleFactor = 70; // (441400-437900)/50
 	private static final int yBase = 437900;
-	private static final int yRange = 441400 - 437900;
+	private static final double yRange = 441400 - 437900;
 
 	/**
 	 * Note that the passed {@link HourFilter} is substantially different than
@@ -104,8 +103,8 @@ public class DataLoader {
 			DayFilter df, HourFilter hf, int desiredWidth, int desiredHeight) {
 		mSliceSize = sliceSlize;
 
-		yScaleFactor = yRange / desiredHeight;
-		xScaleFactor = xRange / desiredWidth;
+		yScaleFactor = (int) Math.ceil(yRange / (double) desiredHeight);
+		xScaleFactor = (int) Math.ceil(xRange / (double) desiredWidth);
 
 		try {
 			mInputFile = new BufferedReader(new FileReader(dataFileName));
@@ -189,8 +188,6 @@ public class DataLoader {
 
 				long time = Long.parseLong(line.split("\t")[0]) * 1000;
 				mTempCalendar.setTimeInMillis(time);
-				// System.out.println("Checking "
-				// + mTempCalendar.getTime().toLocaleString());
 				if (passesDayMonthYearTimeFilters(time)) {
 					mInputFile.reset();
 					return;
@@ -232,10 +229,14 @@ public class DataLoader {
 				nextLine = mInputFile.readLine();
 				if (nextLine == null) {
 					mInputFile.close();
+					//System.out.println("values: " + valueCt);
+					valueCt = 0;
 					return 1;
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
+				//System.out.println("values: " + valueCt);
+				valueCt = 0;
 				return -1;
 			}
 
@@ -249,6 +250,8 @@ public class DataLoader {
 					e.printStackTrace();
 				}
 				updateCurrentTimeSlice();
+				//System.out.println("values: " + valueCt);
+				valueCt = 0;
 				return 0;
 			}
 
@@ -257,9 +260,11 @@ public class DataLoader {
 			if (passesDayMonthYearTimeFilters(timeStamp) == false) {
 				// Are we before or after
 				mTempCalendar.setTimeInMillis(timeStamp);
-				if (mTempCalendar.after(mRangeEnd))
+				if (mTempCalendar.after(mRangeEnd)) {
+					//System.out.println("values: " + valueCt);
+					valueCt = 0;
 					return 1;
-				else
+				} else
 					continue;
 			}
 
@@ -272,11 +277,14 @@ public class DataLoader {
 
 			int xScaled = (int) (x / xScaleFactor);
 			int yScaled = (int) (y / yScaleFactor);
-			r.addDataReading(new Point(xScaled, yScaled));
+			r.addDataReading(new Point(xScaled, yScaled), values[1]);
 
+			valueCt++;
 		}
 
 	}
+
+	int valueCt = 0;
 
 	private void updateCurrentTimeSlice() {
 		switch (mSliceSize) {

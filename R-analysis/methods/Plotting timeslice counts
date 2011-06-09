@@ -1,0 +1,17 @@
+# Extract just the time information
+> times = associations$time
+
+# Build 'buckets' that equal the timeslice size 
+> 15 * 60
+[1] 900
+> bins=seq(986990247, max(times) + 1800,by=900)
+
+# Ensure the histogram won't fail
+> max(bins) > max(times)
+[1] TRUE
+
+# Plot the hist
+> hist(times,breaks=bins)
+
+
+

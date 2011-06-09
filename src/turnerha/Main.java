@@ -4,11 +4,13 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -21,6 +23,7 @@ import turnerha.data.DataLoader;
 import turnerha.data.DataLoader.DayFilter;
 import turnerha.data.DataLoader.HourFilter;
 import turnerha.data.DataLoader.MonthFilter;
+import turnerha.data.DataLoader.TimeSlice;
 import turnerha.data.DataLoader.YearFilter;
 import turnerha.polygon.RectilinearPixelPoly;
 import turnerha.region.Region;
@@ -28,7 +31,7 @@ import turnerha.region.Regions;
 
 public class Main {
 
-	public static final int K = 4000;
+	public static final int K = 10;
 	public static final int regionXsize = 100;
 	public static final int regionYsize = 100;
 
@@ -39,6 +42,7 @@ public class Main {
 	static MonthFilter mf = new MonthFilter();
 	static DayFilter df = new DayFilter();
 	static HourFilter hf = new HourFilter();
+	static TimeSlice sliceUsed = TimeSlice.Hour;
 
 	static {
 		yf.startYear = 2003;
@@ -49,14 +53,14 @@ public class Main {
 		mf.endMonth = 10;
 		df.endDay = 31;
 
-		hf.startHour = 11;
-		hf.endHour = 17;
+		hf.startHour = 12;
+		hf.endHour = 18;
 	}
 
 	public static void main(String[] args) {
 
 		Regions r = new Regions(new Dimension(regionXsize, regionYsize));
-		r.resetDataReadingCount();
+		r.resetUniqueUsersSeen();
 		r.resetRegionUsage();
 
 		// Random rand = new Random();
@@ -68,28 +72,55 @@ public class Main {
 		// for (int y = 0; y < 3; y++)
 		// randomReadings.add(new Point(x, y));
 
-		DataLoader loader = new DataLoader(DataLoader.TimeSlice.Day, yf, mf,
-				df, hf, regionXsize, regionYsize);
+		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
+				regionXsize, regionYsize);
 		log.info("Generated Random Data Reading Locations");
 
 		int cycle = 0;
+		List<Integer> realkValues = new ArrayList<Integer>(300);
+		boolean lastCycleWasFaulty = false;
 		while (true) {
 
-			log.info("Cycle is " + cycle++);
-			printImage(r, cycle);
+			if (lastCycleWasFaulty == false) {
+				log.info("Cycle is " + cycle++);
+				printImage(r, cycle);
+
+				// Store the real K value for every region
+				for (Region reg : r.getRegions())
+					realkValues.add(Integer.valueOf(reg.getUniqueUsersCount()));
+
+				lastCycleWasFaulty = false;
+			} else
+				System.out.println("faulty");
 
 			// Add data readings
-			r.resetDataReadingCount();
+			r.resetUniqueUsersSeen();
+			r.resetDataReadingCounts();
 			// moveReadings(rand, randomReadings);
 			// for (Point p : randomReadings)
 			// r.addDataReading(p);
 			int result = loader.addPixels(r);
 			if (result == -1) {
 				log.severe("Error reading data file, aborting");
-				return;
+				break;
 			} else if (result == 1) {
 				log.info("End of data file reached");
-				return;
+				break;
+			}
+
+			// Determine if this was a faulty data region e.g. there were 0 data
+			// readings in this time slice TODO if I get the paper work almost
+			// complete, try to analyze the data and see if the missing lines
+			// are at any sort of regular interval
+			int readings = 0;
+			for (Region reg : r.getRegions())
+				readings += reg.getDataReadingCount();
+			if (readings < 500) {
+				lastCycleWasFaulty = true;
+				continue;
+			} else {
+				lastCycleWasFaulty = false;
+				System.out.println("not faulty");
 			}
 
 			log.info("Added data reading locations");
@@ -101,8 +132,60 @@ public class Main {
 
 			log.info("Running algorithm");
 			runAlgorithm(r);
-
 		}
+
+		// Write out the distribution of the real K values (in relatively
+		// chronological order)
+		String filename = "k-distributions/" + K + "in";
+		switch (sliceUsed) {
+		case Day:
+			filename += "1day";
+			break;
+		case Half_Hour:
+			filename += "30min";
+			break;
+		case Hour:
+			filename += "60min";
+			break;
+		case Quarter_Hour:
+			filename += "15min";
+			break;
+		}
+		filename += ".csv";
+
+		try {
+			FileWriter fw = new FileWriter(filename);
+			fw.write("From " + df.startDay + "/" + mf.startMonth + "/"
+					+ yf.startYear + " to " + df.endDay + "/" + mf.endMonth
+					+ "/" + yf.endYear);
+			fw
+					.write("\nAnd " + hf.startHour + ":00 to " + hf.endHour
+							+ ":00\n");
+			GregorianCalendar time = new GregorianCalendar();
+			time.setTimeInMillis(System.currentTimeMillis());
+			fw.write("Executed at " + time.getTime().toLocaleString() + "\n");
+			fw.write("Using " + regionXsize + "x" + regionYsize + "\n");
+
+			for (int i = 0; i < realkValues.size(); i++) {
+				fw.write(Integer.toString(realkValues.get(i)));
+				fw.write('\n');
+			}
+
+			fw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		// Calculate the median value of real k anonymity across all time slices
+		// and across all regions
+		Collections.sort(realkValues);
+		int mid = realkValues.size() / 2;
+		if (realkValues.size() % 2 == 1)
+			System.out.println("Median real K was " + realkValues.get(mid));
+		else
+			System.out.println("Median real K was "
+					+ (realkValues.get(mid) + realkValues.get(mid + 1)) / 2.0);
+
 	}
 
 	private static void moveReadings(Random rand, List<Point> randomReadings2) {
@@ -159,7 +242,7 @@ public class Main {
 
 			log.info("Next region: " + region);
 
-			int count = region.getDataReadingCount();
+			int count = region.getUniqueUsersCount();
 			if (count == K) {
 				log.info("Needs no attention");
 				region.setIsUsed(true);
@@ -194,7 +277,7 @@ public class Main {
 					RectilinearPixelPoly neighborPoly = (RectilinearPixelPoly) neighbor
 							.getPolyImpl();
 
-					if (neighbor.getDataReadingCount() + count <= K)
+					if (neighbor.getUniqueUsersCount() + count <= K)
 						desiredChange = neighborPoly.getArea();
 
 					// If desired change is greater than or equal to the area
@@ -215,7 +298,8 @@ public class Main {
 						int origDesiredChange = desiredChange;
 						do {
 
-							Point start = regionPolygon.getStartPoint(neighborPoly);
+							Point start = regionPolygon
+									.getStartPoint(neighborPoly);
 							Collection<Point> consumable = null;
 							if (start == null) {
 								log
@@ -256,9 +340,9 @@ public class Main {
 			}
 
 			// We are too large, time to shrink!
-			// The K*2 is critical - you don't want to split if you are going to
-			// cause a privacy invasion!
-			if (count >= (K * 2)) {
+			// The (at least) K*2 is critical - you don't want to split if you
+			// are going to cause a privacy invasion!
+			if (count >= (K * 3)) {
 				log.info("Needs to shrink");
 				int partitions = getNumberOfPartitions(count);
 				RectilinearPixelPoly poly = (RectilinearPixelPoly) region
@@ -298,15 +382,12 @@ public class Main {
 	 * @param realK
 	 * @return
 	 */
-	// TODO I can avoid dropping below K so rapidly by reducing the
-	// aggressiveness of this approach, e.g. divide the result by 1.5 before
-	// returning. Create a parameter for this!
 	public static int getNumberOfPartitions(int realK) {
 		if (realK < K)
 			throw new IllegalStateException();
 
-		double percentOfDesiredK = (double) realK / (double) K;
-		int floor = (int) Math.floor(percentOfDesiredK / 1.1);
+		double percentOfDesiredK = (double) realK / (double) (K * 3);
+		int floor = (int) Math.floor(percentOfDesiredK);
 		return floor;
 	}
 
@@ -337,8 +418,8 @@ public class Main {
 
 		@Override
 		public int compare(Region o1, Region o2) {
-			int rc1 = o1.getDataReadingCount();
-			int rc2 = o2.getDataReadingCount();
+			int rc1 = o1.getUniqueUsersCount();
+			int rc2 = o2.getUniqueUsersCount();
 
 			if (rc1 < K && rc2 > K)
 				return -1;
