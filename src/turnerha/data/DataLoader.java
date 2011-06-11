@@ -213,14 +213,13 @@ public class DataLoader {
 	 * Reads data from the file, adding pixels as we go
 	 * 
 	 * @param r
-	 * @return 0 if pixels were read and added, 1 if the end of the file was
-	 *         reached (whether or not pixels were actually added is unreported)
-	 *         or we have reached the end of the available data (bascally,
-	 *         normal termination), -1 if there was an error (such as an IO
-	 *         exception)
+	 * @return -1 if the process is complete (due to either an error, the EOF,
+	 *         or the end of data in our filter window), or the number of data
+	 *         readings added (not the number of unique users seen)
 	 */
 	public int addPixels(Regions r) {
 		String nextLine = null;
+		int valueCt = 0;
 
 		while (true) {
 			// Read in next line
@@ -229,13 +228,10 @@ public class DataLoader {
 				nextLine = mInputFile.readLine();
 				if (nextLine == null) {
 					mInputFile.close();
-					//System.out.println("values: " + valueCt);
-					valueCt = 0;
-					return 1;
+					return -1;
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
-				//System.out.println("values: " + valueCt);
 				valueCt = 0;
 				return -1;
 			}
@@ -250,20 +246,15 @@ public class DataLoader {
 					e.printStackTrace();
 				}
 				updateCurrentTimeSlice();
-				//System.out.println("values: " + valueCt);
-				valueCt = 0;
-				return 0;
+				return valueCt;
 			}
 
 			// Check filters
-
 			if (passesDayMonthYearTimeFilters(timeStamp) == false) {
 				// Are we before or after
 				mTempCalendar.setTimeInMillis(timeStamp);
 				if (mTempCalendar.after(mRangeEnd)) {
-					//System.out.println("values: " + valueCt);
-					valueCt = 0;
-					return 1;
+					return -1;
 				} else
 					continue;
 			}
@@ -284,7 +275,28 @@ public class DataLoader {
 
 	}
 
-	int valueCt = 0;
+	public long getCurrentTimesliceStart() {
+		GregorianCalendar temp = new GregorianCalendar();
+		temp.setTimeInMillis(mEndOfCurrentTimeSlice.getTimeInMillis());
+		switch (mSliceSize) {
+		case Day:
+			temp.add(Calendar.DAY_OF_MONTH, -1);
+		case Hour:
+			temp.add(Calendar.HOUR, -1);
+			break;
+		case Half_Hour:
+			temp.add(Calendar.MINUTE, -30);
+			break;
+		case Quarter_Hour:
+			temp.add(Calendar.MINUTE, -15);
+			break;
+		}
+		return temp.getTimeInMillis();
+	}
+
+	public long getCurrentTimesliceEnd() {
+		return mEndOfCurrentTimeSlice.getTimeInMillis();
+	}
 
 	private void updateCurrentTimeSlice() {
 		switch (mSliceSize) {
@@ -375,6 +387,14 @@ public class DataLoader {
 		int hour = mTempCalendar.get(Calendar.HOUR_OF_DAY);
 		if (hour < mHourFilter.startHour || hour > mHourFilter.endHour)
 			return false;
+
+		if (hour == mHourFilter.endHour) {
+			int min = mTempCalendar.get(Calendar.MINUTE);
+			int sec = mTempCalendar.get(Calendar.SECOND);
+			int mill = mTempCalendar.get(Calendar.MILLISECOND);
+			if (min != 0 || sec != 0 || mill != 0)
+				return false;
+		}
 
 		return true;
 	}

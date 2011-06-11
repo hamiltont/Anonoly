@@ -1,0 +1,15 @@
+# From 24/9/2003 to 31/10/2003
+# And 12:00 to 18:00
+# Executed at Jun 3, 2011 11:02:50 AM
+# Using 100x100
+# Desired K: 10
+# 
+# Format: 
+# 	Time start, Time end, Regions
+# Region Format:
+# 	unique users | reading count | area > <Next Region>
+#
+# Total Region Count:
+# 2
+
+986990247,986990247,12|13|89.123>15|12341234|345.23452345

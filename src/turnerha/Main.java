@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,7 +43,7 @@ public class Main {
 	static MonthFilter mf = new MonthFilter();
 	static DayFilter df = new DayFilter();
 	static HourFilter hf = new HourFilter();
-	static TimeSlice sliceUsed = TimeSlice.Hour;
+	static TimeSlice sliceUsed = TimeSlice.Half_Hour;
 
 	static {
 		yf.startYear = 2003;
@@ -72,57 +73,30 @@ public class Main {
 		// for (int y = 0; y < 3; y++)
 		// randomReadings.add(new Point(x, y));
 
+		FileWriter outFile = getOutFileWriter();
+		int totalRegionCount = 0;
+
 		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
 				regionXsize, regionYsize);
 		log.info("Generated Random Data Reading Locations");
 
 		int cycle = 0;
-		List<Integer> realkValues = new ArrayList<Integer>(300);
-		boolean lastCycleWasFaulty = false;
 		while (true) {
 
-			if (lastCycleWasFaulty == false) {
-				log.info("Cycle is " + cycle++);
-				printImage(r, cycle);
-
-				// Store the real K value for every region
-				for (Region reg : r.getRegions())
-					realkValues.add(Integer.valueOf(reg.getUniqueUsersCount()));
-
-				lastCycleWasFaulty = false;
-			} else
-				System.out.println("faulty");
+			log.info("Cycle is " + cycle++);
+			printImage(r, cycle);
 
 			// Add data readings
 			r.resetUniqueUsersSeen();
 			r.resetDataReadingCounts();
-			// moveReadings(rand, randomReadings);
-			// for (Point p : randomReadings)
-			// r.addDataReading(p);
 			int result = loader.addPixels(r);
 			if (result == -1) {
-				log.severe("Error reading data file, aborting");
+				log.severe("Done reading data file");
 				break;
-			} else if (result == 1) {
-				log.info("End of data file reached");
-				break;
-			}
-
-			// Determine if this was a faulty data region e.g. there were 0 data
-			// readings in this time slice TODO if I get the paper work almost
-			// complete, try to analyze the data and see if the missing lines
-			// are at any sort of regular interval
-			int readings = 0;
-			for (Region reg : r.getRegions())
-				readings += reg.getDataReadingCount();
-			if (readings < 500) {
-				lastCycleWasFaulty = true;
+			} else if (result == 0) {
+				log.info("No data points entered");
 				continue;
-			} else {
-				lastCycleWasFaulty = false;
-				System.out.println("not faulty");
 			}
-
 			log.info("Added data reading locations");
 
 			// Order and reset usage
@@ -132,10 +106,50 @@ public class Main {
 
 			log.info("Running algorithm");
 			runAlgorithm(r);
+
+			// Write out results
+			totalRegionCount += r.getRegions().size();
+			try {
+				outFile.write(Long.toString(loader.getCurrentTimesliceStart()));
+				outFile.write(",");
+				outFile.write(Long.toString(loader.getCurrentTimesliceEnd()));
+				outFile.write(",");
+				StringBuilder b = new StringBuilder();
+				for (Region reg : r.getRegions()) {
+					b.append(reg.getUniqueUsersCount()).append('|').append(
+							reg.getDataReadingCount()).append('|');
+					b.append(
+							((RectilinearPixelPoly) reg.getPolyImpl())
+									.getArea()).append('>');
+				}
+				b.deleteCharAt(b.length()-1);
+				b.append('\n');
+
+				outFile.write(b.toString());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 
-		// Write out the distribution of the real K values (in relatively
-		// chronological order)
+		log.severe("Total Region Count: " + totalRegionCount);
+		// Finish up the output file
+		try {
+			outFile.close();
+
+			RandomAccessFile f = new RandomAccessFile(new File(getFileName()),
+					"rw");
+			while (f.readLine().equals("# Total Region Count:") == false)
+				;
+			f.writeBytes("# ");
+			f.writeBytes(Integer.toString(totalRegionCount));
+			f.writeChar('\n');
+			f.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static String getFileName() {
 		String filename = "k-distributions/" + K + "in";
 		switch (sliceUsed) {
 		case Day:
@@ -152,42 +166,39 @@ public class Main {
 			break;
 		}
 		filename += ".csv";
+		return filename;
+	}
+
+	@SuppressWarnings("deprecation")
+	private static FileWriter getOutFileWriter() {
+
+		String filename = getFileName();
 
 		try {
 			FileWriter fw = new FileWriter(filename);
-			fw.write("From " + df.startDay + "/" + mf.startMonth + "/"
+			fw.write("# From " + df.startDay + "/" + mf.startMonth + "/"
 					+ yf.startYear + " to " + df.endDay + "/" + mf.endMonth
 					+ "/" + yf.endYear);
 			fw
-					.write("\nAnd " + hf.startHour + ":00 to " + hf.endHour
+					.write("\n# And " + hf.startHour + ":00 to " + hf.endHour
 							+ ":00\n");
 			GregorianCalendar time = new GregorianCalendar();
 			time.setTimeInMillis(System.currentTimeMillis());
-			fw.write("Executed at " + time.getTime().toLocaleString() + "\n");
-			fw.write("Using " + regionXsize + "x" + regionYsize + "\n");
-
-			for (int i = 0; i < realkValues.size(); i++) {
-				fw.write(Integer.toString(realkValues.get(i)));
-				fw.write('\n');
-			}
-
-			fw.close();
+			fw.write("# Executed at " + time.getTime().toLocaleString() + "\n");
+			fw.write("# Using " + regionXsize + "x" + regionYsize + "\n");
+			fw.write("# Desired K: " + K + "\n# \n");
+			fw
+					.write("# Format: \n# 	Time start, Time end, Regions\n"
+							+ "# Region Format:\n# 	unique users | reading count"
+							+ " | area > <Next Region>\n# \n# Total Region Count:\n# ##################\n\n");
+			return fw;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		// Calculate the median value of real k anonymity across all time slices
-		// and across all regions
-		Collections.sort(realkValues);
-		int mid = realkValues.size() / 2;
-		if (realkValues.size() % 2 == 1)
-			System.out.println("Median real K was " + realkValues.get(mid));
-		else
-			System.out.println("Median real K was "
-					+ (realkValues.get(mid) + realkValues.get(mid + 1)) / 2.0);
-
+		return null;
 	}
 
+	@SuppressWarnings("unused")
 	private static void moveReadings(Random rand, List<Point> randomReadings2) {
 		for (Point p : randomReadings2)
 			if (rand.nextBoolean()) {

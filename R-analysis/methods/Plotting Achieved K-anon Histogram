@@ -1,0 +1,34 @@
+# First read the data into R using the designed script
+> source("/Users/hamiltont/Documents/Programming/eclipse-workspace/Anonoly/R-analysis/scripts/read-k-distributions.R")
+Please choose a file from the k-distributions directory
+Reading data
+Parsing Date
+Allocating space for Regions
+Parsing Regions
+> 
+
+# Extract the unique user counts for each region
+> users = regions[,2]
+
+# Note there are a large percentage of zeros (most frequency counts for the filtered
+# dataset are below 200)
+> length(users[users==0])
+[1] 872
+
+# Build the hist bins
+> range(regions[,2])
+[1]   0 254
+> bins=seq(0,255,by=1)
+
+# (Optional) Remove the strangely high zero count
+> users = users[users!=0]
+
+# Build the plot
+> hist(foo,breaks=bins,freq=TRUE,col="red",border="darkred",main="Achieved K-anonymity",xlab="k-anonymity",ylab="Number of Regions")
+
+# Add the expected K line and the legend
+> abline(v=10)
+> legend("topright","Desired k-anonymity",bty="n",fill="black")
+
+
+
