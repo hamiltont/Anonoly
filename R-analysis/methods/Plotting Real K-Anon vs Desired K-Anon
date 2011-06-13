@@ -1,0 +1,22 @@
+# Load the data in one-by-one using the R script for reading an k-distribution
+# With each load, extract the median k-anonymity
+
+# Setup the initial vectors
+> desired_k_anon = c(5,10,15,20,30,40,55,80,150)
+> median_k_anon = seq(0,8,by=1)
+
+# Repeat the next two steps as needed
+
+> source("/Users/hamiltont/Documents/Programming/eclipse-workspace/Anonoly/R-analysis/scripts/read-k-distributions.R")
+Please choose a file from the k-distributions directory
+Reading data
+Parsing Date
+Allocating space for Regions
+Parsing Regions
+> median_k_anon[1] = median(regions[,2])
+
+# Add lines to indicate the 1/1, the 2/1, and the 3/1 slopes
+> abline(a=0,b=1)
+> abline(a=0,b=2)
+> abline(a=0,b=3)
+

@@ -1,0 +1,24 @@
+# Load the data in one-by-one using the R script for reading an k-distribution
+# With each load, extract the median region size
+
+# Build the desired K vector for the data
+> desired_k_anon = c(5,10,15,20,30,40,55,80,115,150)
+
+# Prepopulate a median vector
+> median_region_size = seq(0,9,by=1)
+
+# Repeat the next two steps as needed
+
+# Load the data
+> source("/Users/hamiltont/Documents/Programming/eclipse-workspace/Anonoly/R-analysis/scripts/read-k-distributions.R")
+Please choose a file from the k-distributions directory
+Reading data
+Parsing Date
+Allocating space for Regions
+Parsing Regions
+
+# Insert the median into the median array
+> median_region_size[1] = median(regions[,4])
+
+# Plot
+> plot(desired_k_anon, median_region_size,main="Median Region Size vs Desired K-anonymity",type="o",xlab="Desired k-anonymity",ylab="Median Region Size (in pixels squared)")
