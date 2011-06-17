@@ -33,8 +33,8 @@ import turnerha.region.Regions;
 public class Main {
 
 	public static final int K = 10;
-	public static final int regionXsize = 100;
-	public static final int regionYsize = 100;
+	public static final int regionXsize = 500;
+	public static final int regionYsize = 500;
 
 	public static final Logger log = Logger.getLogger(Main.class
 			.getCanonicalName());
@@ -43,7 +43,20 @@ public class Main {
 	static MonthFilter mf = new MonthFilter();
 	static DayFilter df = new DayFilter();
 	static HourFilter hf = new HourFilter();
-	static TimeSlice sliceUsed = TimeSlice.Half_Hour;
+	static TimeSlice sliceUsed = TimeSlice.Quarter_Hour;
+
+	/**
+	 * This is a multiplier used on the desired K value before checking if a
+	 * region should be split. A region should be split if it's K value is
+	 * greater than or equal to the safety-margin-adjusted desired k value. To
+	 * avoid a large number of privacy invasions (e.g. regions with a K between
+	 * 1...desired K - 1) this should be at least 2. Splitting a region into
+	 * equal parts when that region does not have at least 2x the number of
+	 * minimally required readings implies that (if the number of incoming
+	 * readings stay fairly constant) the next cycle will cause a privacy
+	 * invasion in at least one of those readings
+	 */
+	private static double SAFETY_MARGIN = 3.0;
 
 	static {
 		yf.startYear = 2003;
@@ -76,8 +89,11 @@ public class Main {
 		FileWriter outFile = getOutFileWriter();
 		int totalRegionCount = 0;
 
-		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
+//		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
+//				regionXsize, regionYsize);
+		DataLoader loader = new DataLoader(sliceUsed, null, null, null, null,
 				regionXsize, regionYsize);
+		
 		log.info("Generated Random Data Reading Locations");
 
 		int cycle = 0;
@@ -122,7 +138,7 @@ public class Main {
 							((RectilinearPixelPoly) reg.getPolyImpl())
 									.getArea()).append('>');
 				}
-				b.deleteCharAt(b.length()-1);
+				b.deleteCharAt(b.length() - 1);
 				b.append('\n');
 
 				outFile.write(b.toString());
@@ -165,6 +181,7 @@ public class Main {
 			filename += "15min";
 			break;
 		}
+		filename += "-" + regionXsize + "x" + regionYsize;
 		filename += ".csv";
 		return filename;
 	}
@@ -179,9 +196,8 @@ public class Main {
 			fw.write("# From " + df.startDay + "/" + mf.startMonth + "/"
 					+ yf.startYear + " to " + df.endDay + "/" + mf.endMonth
 					+ "/" + yf.endYear);
-			fw
-					.write("\n# And " + hf.startHour + ":00 to " + hf.endHour
-							+ ":00\n");
+			fw.write("\n# And " + hf.startHour + ":00 to " + hf.endHour
+					+ ":00\n");
 			GregorianCalendar time = new GregorianCalendar();
 			time.setTimeInMillis(System.currentTimeMillis());
 			fw.write("# Executed at " + time.getTime().toLocaleString() + "\n");
@@ -351,9 +367,7 @@ public class Main {
 			}
 
 			// We are too large, time to shrink!
-			// The (at least) K*2 is critical - you don't want to split if you
-			// are going to cause a privacy invasion!
-			if (count >= (K * 3)) {
+			if (count >= ((double) K * SAFETY_MARGIN)) {
 				log.info("Needs to shrink");
 				int partitions = getNumberOfPartitions(count);
 				RectilinearPixelPoly poly = (RectilinearPixelPoly) region

@@ -6,6 +6,10 @@
 # times == the time regions in minutes
 # suffix == an suffix on the filenames (if there is anything between the hyphen and the 
 # 			dot)
+#
+# Returns a matrix of "matrix(nrow=length(k),ncol=length(times),dimnames=list(k,times))"
+# that contains the median region size of all regions created for that K at that time slice
+# size. Also plots the data
 ht_plot_region_size_vs_time = function(wd = "~/Documents/Programming/eclipse-workspace/Anonoly", k= c(5,10,15,20,30,40,55,80,115,150), times=c(15,30,60,60*24), suffix = "100x100") {
 	
 	# Ensure the read_kdist() function is available

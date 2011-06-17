@@ -126,8 +126,9 @@ public class DataLoader {
 		else {
 			yearFilter = new YearFilter();
 			yearFilter.startYear = temp.getMinimum(Calendar.YEAR);
-			yearFilter.endYear = temp.getMaximum(Calendar.YEAR);
+			yearFilter.endYear = temp.getLeastMaximum(Calendar.YEAR);
 		}
+		
 
 		MonthFilter monthFilter = null;
 		if (mf != null)
@@ -156,6 +157,7 @@ public class DataLoader {
 		mRangeEnd.set(Calendar.YEAR, yearFilter.endYear);
 		mRangeEnd.set(Calendar.MONTH, monthFilter.endMonth);
 		mRangeEnd.set(Calendar.DAY_OF_MONTH, dayFilter.endDay);
+		mRangeEnd.getTimeInMillis();
 
 		if (hf != null)
 			mHourFilter = hf;
@@ -203,7 +205,8 @@ public class DataLoader {
 	private boolean passesDayMonthYearTimeFilters(long timeStamp) {
 		mTempCalendar.setTimeInMillis(timeStamp);
 
-		if (mTempCalendar.before(mRangeStart) || mTempCalendar.after(mRangeEnd))
+		if (mTempCalendar.compareTo(mRangeStart) < 0
+				|| mTempCalendar.compareTo(mRangeEnd) > 0)
 			return false;
 
 		return true;
