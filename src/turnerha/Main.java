@@ -31,13 +31,28 @@ import turnerha.region.Regions;
 
 public class Main {
 
-	public static final int K = 10;
-	public static final int regionXsize = 500;
-	public static final int regionYsize = 500;
+	/** Used to set the width of the environment in pixels */
+	private static final String paramEnvironmentXSize = "anonoly.environment.Xsize";
 
-	public static final Logger log = Logger.getLogger(Main.class
-			.getCanonicalName());
-	static List<Point> randomReadings = new ArrayList<Point>();
+	/** Used to set the height of the environment in pixels */
+	private static final String paramEnvironmentYSize = "anonoly.environment.Ysize";
+
+	/** Used to set the desired k value */
+	private static final String paramK = "anonoly.K";
+
+	/**
+	 * Used as a shortcut for setting the start/end filters to commonly used
+	 * values. Currently accepted values are 'kapadia' to use the data range
+	 * used in Kapadia et al., or 'full' to use the entire data range
+	 */
+	private static final String paramDatasetRange = "anonoly.DatasetRange";
+
+	/** Used to set the timeslice length */
+	private static final String paramTimesliceLength = "anonoly.Timeslice";
+
+	public static int K = 10;
+	private static int environXsize = 500;
+	private static int environYsize = 500;
 	static YearFilter yf = new YearFilter();
 	static MonthFilter mf = new MonthFilter();
 	static DayFilter df = new DayFilter();
@@ -57,6 +72,9 @@ public class Main {
 	 */
 	private static double SAFETY_MARGIN = 3.0;
 
+	public static final Logger log = Logger.getLogger(Main.class
+			.getCanonicalName());
+
 	static {
 		yf.startYear = 2003;
 		mf.startMonth = 9;
@@ -72,31 +90,54 @@ public class Main {
 
 	public static void main(String[] args) {
 
-		
-		
-		Regions r = new Regions(new Dimension(regionXsize, regionYsize));
+		if (System.getProperty(paramEnvironmentXSize) != null)
+			environXsize = Integer.parseInt(System
+					.getProperty(paramEnvironmentXSize));
+
+		if (System.getProperty(paramEnvironmentYSize) != null)
+			environYsize = Integer.parseInt(System
+					.getProperty(paramEnvironmentYSize));
+
+		if (System.getProperty(paramK) != null)
+			K = Integer.parseInt(System.getProperty(paramK));
+
+		if (System.getProperty(paramDatasetRange) != null) {
+			String range = System.getProperty(paramDatasetRange);
+			if (range.equals("kapadia")) {
+				yf.startYear = 2003;
+				mf.startMonth = 9;
+				df.startDay = 24;
+
+				yf.endYear = 2003;
+				mf.endMonth = 10;
+				df.endDay = 31;
+
+				hf.startHour = 12;
+				hf.endHour = 18;
+			} else if (range.equals("full")) {
+				yf = null;
+				mf = null;
+				df = null;
+				hf = null;
+			} else
+				System.err.println("Unknown value passed in for "
+						+ paramDatasetRange);
+		}
+
+		if (System.getProperty(paramTimesliceLength) != null)
+			sliceUsed = Long
+					.parseLong(System.getProperty(paramTimesliceLength));
+
+		Regions r = new Regions(new Dimension(environXsize, environYsize));
 		r.resetUniqueUsersSeen();
 		r.resetRegionUsage();
 
-		// Random rand = new Random();
-		// rand.setSeed(10);
-		// for (int i = 0; i < 100; i++)
-		// randomReadings.add(new Point(rand.nextInt(50), rand.nextInt(50)));
-
-		// for (int x = 0; x < 3; x++)
-		// for (int y = 0; y < 3; y++)
-		// randomReadings.add(new Point(x, y));
+		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
+				environXsize, environYsize);
 
 		FileWriter outFile = getOutFileWriter();
+
 		int totalRegionCount = 0;
-
-		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
-				regionXsize, regionYsize);
-		// DataLoader loader = new DataLoader(sliceUsed, null, null, null, null,
-		// regionXsize, regionYsize);
-
-		log.info("Generated Random Data Reading Locations");
-
 		int cycle = 0;
 		while (true) {
 
@@ -170,7 +211,7 @@ public class Main {
 		String filename = "k-distributions/" + K + "in";
 		filename += sliceUsed;
 		filename += "sec";
-		filename += "-" + regionXsize + "x" + regionYsize;
+		filename += "-" + environXsize + "x" + environYsize;
 		filename += ".csv";
 		return filename;
 	}
@@ -190,7 +231,7 @@ public class Main {
 			GregorianCalendar time = new GregorianCalendar();
 			time.setTimeInMillis(System.currentTimeMillis());
 			fw.write("# Executed at " + time.getTime().toLocaleString() + "\n");
-			fw.write("# Using " + regionXsize + "x" + regionYsize + "\n");
+			fw.write("# Using " + environXsize + "x" + environYsize + "\n");
 			fw.write("# Desired K: " + K + "\n# \n");
 			fw
 					.write("# Format: \n# 	Time start, Time end, Regions\n"
