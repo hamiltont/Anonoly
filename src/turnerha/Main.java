@@ -24,7 +24,6 @@ import turnerha.data.DataLoader;
 import turnerha.data.DataLoader.DayFilter;
 import turnerha.data.DataLoader.HourFilter;
 import turnerha.data.DataLoader.MonthFilter;
-import turnerha.data.DataLoader.TimeSlice;
 import turnerha.data.DataLoader.YearFilter;
 import turnerha.polygon.RectilinearPixelPoly;
 import turnerha.region.Region;
@@ -43,7 +42,7 @@ public class Main {
 	static MonthFilter mf = new MonthFilter();
 	static DayFilter df = new DayFilter();
 	static HourFilter hf = new HourFilter();
-	static TimeSlice sliceUsed = TimeSlice.Quarter_Hour;
+	static long sliceUsed = 15 * 60;
 
 	/**
 	 * This is a multiplier used on the desired K value before checking if a
@@ -73,6 +72,8 @@ public class Main {
 
 	public static void main(String[] args) {
 
+		
+		
 		Regions r = new Regions(new Dimension(regionXsize, regionYsize));
 		r.resetUniqueUsersSeen();
 		r.resetRegionUsage();
@@ -89,11 +90,11 @@ public class Main {
 		FileWriter outFile = getOutFileWriter();
 		int totalRegionCount = 0;
 
-//		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
-//				regionXsize, regionYsize);
-		DataLoader loader = new DataLoader(sliceUsed, null, null, null, null,
+		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
 				regionXsize, regionYsize);
-		
+		// DataLoader loader = new DataLoader(sliceUsed, null, null, null, null,
+		// regionXsize, regionYsize);
+
 		log.info("Generated Random Data Reading Locations");
 
 		int cycle = 0;
@@ -167,20 +168,8 @@ public class Main {
 
 	private static String getFileName() {
 		String filename = "k-distributions/" + K + "in";
-		switch (sliceUsed) {
-		case Day:
-			filename += "1day";
-			break;
-		case Half_Hour:
-			filename += "30min";
-			break;
-		case Hour:
-			filename += "60min";
-			break;
-		case Quarter_Hour:
-			filename += "15min";
-			break;
-		}
+		filename += sliceUsed;
+		filename += "sec";
 		filename += "-" + regionXsize + "x" + regionYsize;
 		filename += ".csv";
 		return filename;

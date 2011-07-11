@@ -12,10 +12,6 @@ import turnerha.region.Regions;
 
 public class DataLoader {
 
-	public enum TimeSlice {
-		Day, Hour, Half_Hour, Quarter_Hour
-	}
-
 	/**
 	 * Defines a start / end year to filter by. Both values are inclusive, e.g.
 	 * if start is 2001, then year 2001 is included in the results
@@ -60,12 +56,12 @@ public class DataLoader {
 		public int endHour;
 	}
 
-	private TimeSlice mSliceSize;
 	private GregorianCalendar mEndOfCurrentTimeSlice = null;
 	private HourFilter mHourFilter;
 	private GregorianCalendar mRangeStart;
 	private GregorianCalendar mRangeEnd;
 	private BufferedReader mInputFile;
+	private long mSliceLength;
 
 	private GregorianCalendar mTempCalendar = new GregorianCalendar();
 
@@ -87,21 +83,21 @@ public class DataLoader {
 	 * work. You can specify the date range May 1 to May 7, and for every day in
 	 * that range the hours 1PM to 7PM will be allowed through the filters
 	 * 
-	 * @param sliceSlize
+	 * @param sliceSize
 	 *            Defines the length that each slice of time should be divided
-	 *            into. Uses even divisions, e.g. 0, 15, 30, 45, etc minutes.
-	 *            Additionally, starts at the first even division occurring
-	 *            before the first reading. For days, this is the start of the
-	 *            day that the first reading was entered on
+	 *            into, with seconds as the unit. The first slice will start on
+	 *            the hour of the hourfilter, and will end at the start of the
+	 *            hour plus this amount of time
+	 * 
 	 * @param yf
 	 * @param mf
 	 * @param df
 	 * @param hf
 	 */
 	@SuppressWarnings("hiding")
-	public DataLoader(TimeSlice sliceSlize, YearFilter yf, MonthFilter mf,
+	public DataLoader(long sliceSize, YearFilter yf, MonthFilter mf,
 			DayFilter df, HourFilter hf, int desiredWidth, int desiredHeight) {
-		mSliceSize = sliceSlize;
+		mSliceLength = sliceSize;
 
 		yScaleFactor = (int) Math.ceil(yRange / (double) desiredHeight);
 		xScaleFactor = (int) Math.ceil(xRange / (double) desiredWidth);
@@ -128,7 +124,6 @@ public class DataLoader {
 			yearFilter.startYear = temp.getMinimum(Calendar.YEAR);
 			yearFilter.endYear = temp.getLeastMaximum(Calendar.YEAR);
 		}
-		
 
 		MonthFilter monthFilter = null;
 		if (mf != null)
@@ -279,22 +274,10 @@ public class DataLoader {
 	}
 
 	public long getCurrentTimesliceStart() {
-		GregorianCalendar temp = new GregorianCalendar();
-		temp.setTimeInMillis(mEndOfCurrentTimeSlice.getTimeInMillis());
-		switch (mSliceSize) {
-		case Day:
-			temp.add(Calendar.DAY_OF_MONTH, -1);
-		case Hour:
-			temp.add(Calendar.HOUR, -1);
-			break;
-		case Half_Hour:
-			temp.add(Calendar.MINUTE, -30);
-			break;
-		case Quarter_Hour:
-			temp.add(Calendar.MINUTE, -15);
-			break;
-		}
-		return temp.getTimeInMillis();
+
+		final long curEnd = mEndOfCurrentTimeSlice.getTimeInMillis();
+		final long start = curEnd - mSliceLength * 1000;
+		return start;
 	}
 
 	public long getCurrentTimesliceEnd() {
@@ -302,73 +285,22 @@ public class DataLoader {
 	}
 
 	private void updateCurrentTimeSlice() {
-		switch (mSliceSize) {
-		case Day:
-			mEndOfCurrentTimeSlice.add(Calendar.DAY_OF_MONTH, 1);
-		case Hour:
-			mEndOfCurrentTimeSlice.add(Calendar.HOUR, 1);
-			break;
-		case Half_Hour:
-			mEndOfCurrentTimeSlice.add(Calendar.MINUTE, 30);
-			break;
-		case Quarter_Hour:
-			mEndOfCurrentTimeSlice.add(Calendar.MINUTE, 15);
-			break;
-		}
+		long updated = mEndOfCurrentTimeSlice.getTimeInMillis();
+		updated += mSliceLength * 1000;
+
+		mEndOfCurrentTimeSlice.setTimeInMillis(updated);
 	}
 
 	private boolean isInCurrentTimeSlice(long timeStamp) {
 		mTempCalendar.setTimeInMillis(timeStamp);
 		if (mEndOfCurrentTimeSlice == null) {
-			switch (mSliceSize) {
-			case Day:
-				mEndOfCurrentTimeSlice = new GregorianCalendar();
-				mEndOfCurrentTimeSlice.setTimeInMillis(timeStamp);
-				mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 0);
-				mEndOfCurrentTimeSlice.set(Calendar.SECOND, 0);
-				mEndOfCurrentTimeSlice.set(Calendar.MILLISECOND, 0);
-				mEndOfCurrentTimeSlice.set(Calendar.HOUR, 0);
-				mEndOfCurrentTimeSlice.add(Calendar.DAY_OF_MONTH, 1);
-				break;
-			case Hour:
-				mEndOfCurrentTimeSlice = new GregorianCalendar();
-				mEndOfCurrentTimeSlice.setTimeInMillis(timeStamp);
-				mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 0);
-				mEndOfCurrentTimeSlice.set(Calendar.SECOND, 0);
-				mEndOfCurrentTimeSlice.set(Calendar.MILLISECOND, 0);
-				mEndOfCurrentTimeSlice.add(Calendar.HOUR, 1);
-				return true;
-			case Half_Hour:
-				mEndOfCurrentTimeSlice = new GregorianCalendar();
-				mEndOfCurrentTimeSlice.setTimeInMillis(timeStamp);
-				mEndOfCurrentTimeSlice.set(Calendar.SECOND, 0);
-				mEndOfCurrentTimeSlice.set(Calendar.MILLISECOND, 0);
-				int min = mEndOfCurrentTimeSlice.get(Calendar.MINUTE);
-				if (min < 30)
-					mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 30);
-				else {
-					mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 0);
-					mEndOfCurrentTimeSlice.add(Calendar.HOUR, 1);
-				}
-				return true;
-			case Quarter_Hour:
-				mEndOfCurrentTimeSlice = new GregorianCalendar();
-				mEndOfCurrentTimeSlice.setTimeInMillis(timeStamp);
-				mEndOfCurrentTimeSlice.set(Calendar.SECOND, 0);
-				mEndOfCurrentTimeSlice.set(Calendar.MILLISECOND, 0);
-				min = mEndOfCurrentTimeSlice.get(Calendar.MINUTE);
-				if (min < 15)
-					mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 15);
-				else if (min < 30)
-					mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 30);
-				else if (min < 45)
-					mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 45);
-				else {
-					mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 0);
-					mEndOfCurrentTimeSlice.add(Calendar.HOUR, 1);
-				}
-				return true;
-			}
+			mEndOfCurrentTimeSlice = new GregorianCalendar();
+			mEndOfCurrentTimeSlice.setTimeInMillis(timeStamp);
+			mEndOfCurrentTimeSlice.set(Calendar.MINUTE, 0);
+			mEndOfCurrentTimeSlice.set(Calendar.SECOND, 0);
+			mEndOfCurrentTimeSlice.set(Calendar.MILLISECOND, 0);
+			updateCurrentTimeSlice();
+			return true;
 		}
 
 		if (mTempCalendar.before(mEndOfCurrentTimeSlice)
