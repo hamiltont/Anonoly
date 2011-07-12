@@ -11,8 +11,12 @@
 #			  all regions
 
 
-read_kdist = function(filename = file.choose()) {
-	data = read.table(filename, sep=",",col.names=c("t_start","t_end","regions"),colClasses=c("numeric","numeric","character"))
+ht_read_kdist = function(filename = file.choose()) {
+	
+	data = read.table(filename, 
+						sep=",",
+						col.names=c("t_start","t_end","regions"),
+						colClasses=c("numeric","numeric","character"))
 
 
 	

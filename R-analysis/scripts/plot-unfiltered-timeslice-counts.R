@@ -10,12 +10,13 @@
 ht_plot_unfiltered_timeslice_counts = function(slice = "15 min", wd = "~/Documents/Programming/eclipse-workspace/Anonoly", plot=TRUE, preread_data = NA) {
 	filename = paste(wd,"/sorted_data_by_mysql.tsv",sep="")
 	
-	cat("Reading data\n")
-	if (is.na(preread_data))
+	if (is.na(preread_data)) {
+		cat("Reading data\n")
 		data = read.table(file=filename,
 						sep="\t",
 						col.names=c("time","id","x","y"),
 						colClasses=c("integer","NULL","NULL","NULL"))
+	}
 	else
 		data = preread_data
 
