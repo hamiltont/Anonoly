@@ -42,10 +42,10 @@ ht_locate_volatile_data = function(slice = "30 min",
   diffcounts = vector(length=end)
 	while (current != end)
 	{
-    
     lastval = -1
     diffsum = 0
-    for (val in counts[current:(current + count)])
+    region = counts[current:(current + count)]
+    for (val in region)
     {
       if (lastval == -1)
       {
@@ -57,7 +57,7 @@ ht_locate_volatile_data = function(slice = "30 min",
       lastval = val
     }
     
-    diffcounts[current] = diffsum
+    diffcounts[current] = diffsum * (max(region) - min(region))
     current = current + 1
 	}
   
@@ -65,8 +65,18 @@ ht_locate_volatile_data = function(slice = "30 min",
   if (plotdc)
     plot(diffcounts,type="l")
 
+  diffdata = counts[index:(index + count)]
   if (plotans)
-    plot(counts[index:(index + count)],type="l")
+  {
+    midp = barplot(diffdata,
+                   xlab="Time",
+                   ylab="Count of Incoming Data Readings",
+                   xaxt='n')
+            
+    text(x=midp,y=diffdata,label=format(diffdata),pos=c(3,1,1,1),cex=1.25)
+    
+    axis(1,at=c(1,2,3,4),labels=c("12:00","12:15","12:30","12:45"))
+  }
 
-  return(counts[index:(index + count)])
+  return(diffdata)
 }
