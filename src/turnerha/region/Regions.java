@@ -55,6 +55,12 @@ public class Regions {
 		mRegions.add(r);
 	}
 
+	/**
+	 * Regions are marked as 'used' or 'not used' while the Anonoly algorithm is
+	 * executing. This call resets all regions to 'not used' for the beginning
+	 * of the algorithm, and as regions are merged or split they become 'used'.
+	 * The algorithm is complete when all regions have been 'used'
+	 */
 	public void resetRegionUsage() {
 		for (Region p : mRegions)
 			p.setIsUsed(false);

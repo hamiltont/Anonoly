@@ -31,32 +31,38 @@ import turnerha.region.Regions;
 
 public class Main {
 
-	/** Used to set the width of the environment in pixels */
-	private static final String paramEnvironmentXSize = "anonoly.environment.Xsize";
+	/** The desired K-value */
+	public static int K = 10;
 
-	/** Used to set the height of the environment in pixels */
-	private static final String paramEnvironmentYSize = "anonoly.environment.Ysize";
+	/** The width of the environment in pixels */
+	private static int environXsize = 50;
 
-	/** Used to set the desired k value */
-	private static final String paramK = "anonoly.K";
+	/** The height of the environment in pixels */
+	private static int environYsize = 50;
+
+	/** The start/end year of the data set. These are inclusive years */
+	static YearFilter yf = new YearFilter();
+
+	/** The start/end month of the data set (inclusive) */
+	static MonthFilter mf = new MonthFilter();
+
+	/** The start/end day of the data set (inclusive) */
+	static DayFilter df = new DayFilter();
 
 	/**
-	 * Used as a shortcut for setting the start/end filters to commonly used
-	 * values. Currently accepted values are 'kapadia' to use the data range
-	 * used in Kapadia et al., or 'full' to use the entire data range
+	 * If true, an image of the tessellation will be written to disk for every
+	 * cycle of the algorithm
 	 */
-	private static final String paramDatasetRange = "anonoly.DatasetRange";
+	static final boolean debugPrintTessellationEveryCycle = false;
 
-	/** Used to set the timeslice length */
-	private static final String paramTimesliceLength = "anonoly.Timeslice";
-
-	public static int K = 10;
-	private static int environXsize = 500;
-	private static int environYsize = 500;
-	static YearFilter yf = new YearFilter();
-	static MonthFilter mf = new MonthFilter();
-	static DayFilter df = new DayFilter();
+	/**
+	 * For every day that passes the year, month, and day filters, the hour
+	 * filter is used to determine which hours in that day are allowed to be
+	 * sent on to the Anonoly algorithm
+	 */
 	static HourFilter hf = new HourFilter();
+
+	/** The length (in minutes) of the desired timeslice */
 	static long sliceUsed = 15 * 60;
 
 	/**
@@ -72,21 +78,13 @@ public class Main {
 	 */
 	private static double SAFETY_MARGIN = 3.0;
 
-	public static final Logger log = Logger.getLogger(Main.class
-			.getCanonicalName());
-
-	static {
-		yf.startYear = 2003;
-		mf.startMonth = 9;
-		df.startDay = 24;
-
-		yf.endYear = 2003;
-		mf.endMonth = 10;
-		df.endDay = 31;
-
-		hf.startHour = 12;
-		hf.endHour = 18;
-	}
+	/**
+	 * Specifies how many cycles the algorithm will operate before the dynamic
+	 * tessellation stops e.g. the tessellation map becomes static. A value of
+	 * -1 indicates that the execution will remain dynamic for all time. This
+	 * value is useful for comparing Anonoly to static tessellation algorithms
+	 */
+	private static int dynamicCycleCount = 10;
 
 	public static void main(String[] args) {
 
@@ -100,6 +98,10 @@ public class Main {
 
 		if (System.getProperty(paramK) != null)
 			K = Integer.parseInt(System.getProperty(paramK));
+
+		if (System.getProperty(paramNumberDynamicCycles) != null)
+			dynamicCycleCount = Integer.parseInt(System
+					.getProperty(paramNumberDynamicCycles));
 
 		if (System.getProperty(paramDatasetRange) != null) {
 			String range = System.getProperty(paramDatasetRange);
@@ -141,10 +143,9 @@ public class Main {
 		int cycle = 0;
 		while (true) {
 
-			log.info("Cycle is " + cycle++);
-			printImage(r, cycle);
-
-			// Add data readings
+			// Add data readings (do this first b/c we can have a ton of
+			// continue's while the data file pointer is being fast-forwarded to
+			// the location where the filters are first passed)
 			r.resetUniqueUsersSeen();
 			r.resetDataReadingCounts();
 			int result = loader.addPixels(r);
@@ -157,13 +158,21 @@ public class Main {
 			}
 			log.info("Added data reading locations");
 
-			// Order and reset usage
-			r.orderRegions(OptimialityRanking);
-			r.resetRegionUsage();
-			log.info("Ordered regions and reset usage data");
+			log.info("Cycle is " + cycle++);
+			if (debugPrintTessellationEveryCycle)
+				printImage(r, cycle);
 
-			log.info("Running algorithm");
-			runAlgorithm(r);
+			// Checks to see if we should run the algorithm or if we want the
+			// tessellation static at this point
+			if (dynamicCycleCount == -1 || cycle < dynamicCycleCount) {
+				// Order and reset usage
+				r.orderRegions(OptimialityRanking);
+				r.resetRegionUsage();
+				log.info("Ordered regions and reset usage data");
+
+				log.info("Running algorithm");
+				runAlgorithm(r);
+			}
 
 			// Write out results
 			totalRegionCount += r.getRegions().size();
@@ -280,6 +289,13 @@ public class Main {
 		}
 	}
 
+	/**
+	 * Manages running of the Anonoly algorithm. In summary, this goes through
+	 * all of the regions, shrinks them if they are too large, merges them if
+	 * they are too small, and marks them as used while it goes
+	 * 
+	 * @param regions
+	 */
 	public static void runAlgorithm(Regions regions) {
 		List<Region> regionsList = regions.getRegions();
 
@@ -512,5 +528,47 @@ public class Main {
 			throw new IllegalStateException();
 		}
 	};
+
+	/** Used to set the width of the environment in pixels */
+	private static final String paramEnvironmentXSize = "anonoly.environment.Xsize";
+
+	/** Used to set the height of the environment in pixels */
+	private static final String paramEnvironmentYSize = "anonoly.environment.Ysize";
+
+	/** Used to set the desired k value */
+	private static final String paramK = "anonoly.K";
+
+	/**
+	 * Used as a shortcut for setting the start/end filters to commonly used
+	 * values. Currently accepted values are 'kapadia' to use the data range
+	 * used in Kapadia et al., or 'full' to use the entire data range
+	 */
+	private static final String paramDatasetRange = "anonoly.DatasetRange";
+
+	/** Used to set the timeslice length */
+	private static final String paramTimesliceLength = "anonoly.Timeslice";
+
+	/**
+	 * Used to set the number of dynamic cycles executed before the tessellation
+	 * becomes static. Useful for comparing the fully dynamic tessellation
+	 * algorithm with a range of static tessellation options
+	 */
+	private static final String paramNumberDynamicCycles = "anonoly.DynamicCycleCount";
+
+	public static final Logger log = Logger.getLogger(Main.class
+			.getCanonicalName());
+
+	static {
+		yf.startYear = 2003;
+		mf.startMonth = 9;
+		df.startDay = 24;
+
+		yf.endYear = 2003;
+		mf.endMonth = 10;
+		df.endDay = 31;
+
+		hf.startHour = 12;
+		hf.endHour = 18;
+	}
 
 }

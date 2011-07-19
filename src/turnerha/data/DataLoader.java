@@ -12,50 +12,6 @@ import turnerha.region.Regions;
 
 public class DataLoader {
 
-	/**
-	 * Defines a start / end year to filter by. Both values are inclusive, e.g.
-	 * if start is 2001, then year 2001 is included in the results
-	 * 
-	 */
-	public static class YearFilter {
-		public int startYear;
-		public int endYear;
-	}
-
-	/**
-	 * Defines a start / end month to filter by. Both values are inclusive, e.g.
-	 * if start is Jan, then month Jan is included in the results. The values
-	 * should be retrieved from {@link java.util.Calendar}
-	 * 
-	 */
-	public static class MonthFilter {
-		public int startMonth;
-		public int endMonth;
-	}
-
-	/**
-	 * Defines a start / end day to filter by. Both values are inclusive, e.g.
-	 * if start is Monday, then day Monday is included in the results. The
-	 * values should be retrieved from {@link java.util.Calendar}
-	 * 
-	 */
-	public static class DayFilter {
-		public int startDay;
-		public int endDay;
-	}
-
-	/**
-	 * Defines a start / end hour to filter by. Both values are inclusive, e.g.
-	 * if start is 11, then hour 11 is included in the results. These values are
-	 * used for the {@link java.util.Calendar#HOUR_OF_DAY}, and should therefore
-	 * be in [0,1,...,22,23]
-	 * 
-	 */
-	public static class HourFilter {
-		public int startHour;
-		public int endHour;
-	}
-
 	private GregorianCalendar mEndOfCurrentTimeSlice = null;
 	private HourFilter mHourFilter;
 	private GregorianCalendar mRangeStart;
@@ -66,10 +22,10 @@ public class DataLoader {
 	private GregorianCalendar mTempCalendar = new GregorianCalendar();
 
 	private static final String dataFileName = "sorted_data_by_mysql.tsv";
-	private static int xScaleFactor = 104; // (822600-817400)/50
+	private static int xScaleFactor = 104; // (822600-817400) / 50
 	private static final int xBase = 817400;
 	private static final double xRange = 822600 - 817400;
-	private static int yScaleFactor = 70; // (441400-437900)/50
+	private static int yScaleFactor = 70; // (441400-437900) / 50
 	private static final int yBase = 437900;
 	private static final double yRange = 441400 - 437900;
 
@@ -333,4 +289,49 @@ public class DataLoader {
 
 		return true;
 	}
+	
+	/**
+	 * Defines a start / end year to filter by. Both values are inclusive, e.g.
+	 * if start is 2001, then year 2001 is included in the results
+	 * 
+	 */
+	public static class YearFilter {
+		public int startYear;
+		public int endYear;
+	}
+
+	/**
+	 * Defines a start / end month to filter by. Both values are inclusive, e.g.
+	 * if start is Jan, then month Jan is included in the results. The values
+	 * should be retrieved from {@link java.util.Calendar}
+	 * 
+	 */
+	public static class MonthFilter {
+		public int startMonth;
+		public int endMonth;
+	}
+
+	/**
+	 * Defines a start / end day to filter by. Both values are inclusive, e.g.
+	 * if start is Monday, then day Monday is included in the results. The
+	 * values should be retrieved from {@link java.util.Calendar}
+	 * 
+	 */
+	public static class DayFilter {
+		public int startDay;
+		public int endDay;
+	}
+
+	/**
+	 * Defines a start / end hour to filter by. Both values are inclusive, e.g.
+	 * if start is 11, then hour 11 is included in the results. These values are
+	 * used for the {@link java.util.Calendar#HOUR_OF_DAY}, and should therefore
+	 * be in [0,1,...,22,23]
+	 * 
+	 */
+	public static class HourFilter {
+		public int startHour;
+		public int endHour;
+	}
+
 }
