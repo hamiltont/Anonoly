@@ -32,7 +32,7 @@ import turnerha.region.Environment;
 public class Main {
 
 	/** The desired K-value */
-	public static int K = 10;
+	public static int K = 15;
 
 	/** The width of the environment in pixels */
 	private static int environXsize = 50;
@@ -61,7 +61,7 @@ public class Main {
 	 * with the algorithm so that you don't generate a ton of half-filled result
 	 * files
 	 */
-	static final boolean debugWriteOutAnonolyResults = false;
+	static final boolean debugWriteOutAnonolyResults = true;
 
 	/**
 	 * For every day that passes the year, month, and day filters, the hour
@@ -70,7 +70,7 @@ public class Main {
 	 */
 	static HourFilter hf = new HourFilter();
 
-	/** The length (in minutes) of the desired timeslice */
+	/** The length (in seconds) of the desired timeslice */
 	static long sliceUsed = 30 * 60;
 
 	/**
@@ -206,12 +206,13 @@ public class Main {
 
 				log.info("Running algorithm");
 				runAlgorithm(env);
-			} else 
+			} else
 				env.printRegionOrdering();
+
+			totalRegionCount += env.getRegions().size();
 
 			// Write out results
 			if (debugWriteOutAnonolyResults) {
-				totalRegionCount += env.getRegions().size();
 				try {
 					outFile.write(Long.toString(loader
 							.getCurrentTimesliceStart()));
@@ -263,6 +264,8 @@ public class Main {
 		filename += sliceUsed;
 		filename += "sec";
 		filename += "-" + environXsize + "x" + environYsize;
+		if (dynamicCycleCount != -1)
+			filename += "-" + dynamicCycleCount + "cycle-static";
 		filename += ".csv";
 		return filename;
 	}
