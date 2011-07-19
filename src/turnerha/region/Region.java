@@ -22,9 +22,9 @@ public class Region {
 	/** Unique user ids seen in this timeslice */
 	private List<String> mUsersSeen = new ArrayList<String>();
 
-	private Regions mRegionManager;
+	private Environment mRegionManager;
 
-	public Region(RectilinearPixelPoly polygon, Regions regionManager) {
+	public Region(RectilinearPixelPoly polygon, Environment regionManager) {
 		mPoly = polygon;
 		mPoly.setRegion(this);
 		mRegionManager = regionManager;
@@ -117,7 +117,7 @@ public class Region {
 
 	/**
 	 * Returns an image useful for debugging this region. The width/height is
-	 * equal to the total area available in {@link Regions}, and all pixels are
+	 * equal to the total area available in {@link Environment}, and all pixels are
 	 * black or blue, with black indicating pixels not belonging to this region,
 	 * and blue indicating pixels belonging to this region
 	 * 

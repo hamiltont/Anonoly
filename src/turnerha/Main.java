@@ -27,7 +27,7 @@ import turnerha.data.DataLoader.MonthFilter;
 import turnerha.data.DataLoader.YearFilter;
 import turnerha.polygon.RectilinearPixelPoly;
 import turnerha.region.Region;
-import turnerha.region.Regions;
+import turnerha.region.Environment;
 
 public class Main {
 
@@ -56,6 +56,14 @@ public class Main {
 	static final boolean debugPrintTessellationEveryCycle = false;
 
 	/**
+	 * If true, algorithm execution results will be written to disk using a
+	 * standard naming convention. This is typically left false when tinkering
+	 * with the algorithm so that you don't generate a ton of half-filled result
+	 * files
+	 */
+	static final boolean debugWriteOutAnonolyResults = false;
+
+	/**
 	 * For every day that passes the year, month, and day filters, the hour
 	 * filter is used to determine which hours in that day are allowed to be
 	 * sent on to the Anonoly algorithm
@@ -63,7 +71,7 @@ public class Main {
 	static HourFilter hf = new HourFilter();
 
 	/** The length (in minutes) of the desired timeslice */
-	static long sliceUsed = 15 * 60;
+	static long sliceUsed = 30 * 60;
 
 	/**
 	 * This is a multiplier used on the desired K value before checking if a
@@ -84,7 +92,7 @@ public class Main {
 	 * -1 indicates that the execution will remain dynamic for all time. This
 	 * value is useful for comparing Anonoly to static tessellation algorithms
 	 */
-	private static int dynamicCycleCount = 10;
+	private static int dynamicCycleCount = 50;
 
 	public static void main(String[] args) {
 
@@ -130,14 +138,17 @@ public class Main {
 			sliceUsed = Long
 					.parseLong(System.getProperty(paramTimesliceLength));
 
-		Regions r = new Regions(new Dimension(environXsize, environYsize));
-		r.resetUniqueUsersSeen();
-		r.resetRegionUsage();
+		Environment env = new Environment(new Dimension(environXsize,
+				environYsize));
+		env.resetUniqueUsersSeen();
+		env.resetRegionUsage();
 
 		DataLoader loader = new DataLoader(sliceUsed, yf, mf, df, hf,
 				environXsize, environYsize);
 
-		FileWriter outFile = getOutFileWriter();
+		FileWriter outFile = null;
+		if (debugWriteOutAnonolyResults)
+			outFile = getOutFileWriter();
 
 		int totalRegionCount = 0;
 		int cycle = 0;
@@ -146,9 +157,10 @@ public class Main {
 			// Add data readings (do this first b/c we can have a ton of
 			// continue's while the data file pointer is being fast-forwarded to
 			// the location where the filters are first passed)
-			r.resetUniqueUsersSeen();
-			r.resetDataReadingCounts();
-			int result = loader.addPixels(r);
+			env.resetUniqueUsersSeen();
+			env.resetDataReadingCounts();
+
+			int result = loader.addDataReadings(env);
 			if (result == -1) {
 				log.severe("Done reading data file");
 				break;
@@ -156,63 +168,93 @@ public class Main {
 				log.info("No data points entered");
 				continue;
 			}
+
+			// If there is only one region in the tessellation (e.g. Anonoly is
+			// already trying to correct a privacy failure and has reached the
+			// maximum of it's ability w.r.t. reducing locational accuracy), and
+			// the number of unique users that we have seen so far has not been
+			// enough to not enforce user privacy, then we will reduce the
+			// temporal accuracy by a multiple of the timeslice length.
+			// We only do this for the dynamic algorithm - static algorithms are
+			// generally static in terms of both spatial and temporal divisions
+			if (dynamicCycleCount == -1 && env.getRegions().size() == 1)
+				while (env.getUniqueUserCount() < K) {
+					log.info("Extending cycle length by one timeslice");
+
+					result = loader.addDataReadings(env);
+					if (result == -1) {
+						log.severe("Done reading data file");
+						break;
+					}
+
+				}
+
 			log.info("Added data reading locations");
 
 			log.info("Cycle is " + cycle++);
 			if (debugPrintTessellationEveryCycle)
-				printImage(r, cycle);
+				printImage(env, cycle);
 
 			// Checks to see if we should run the algorithm or if we want the
 			// tessellation static at this point
 			if (dynamicCycleCount == -1 || cycle < dynamicCycleCount) {
 				// Order and reset usage
-				r.orderRegions(OptimialityRanking);
-				r.resetRegionUsage();
+				env.orderRegions(OptimialityRanking);
+				env.printRegionOrdering();
+				env.resetRegionUsage();
 				log.info("Ordered regions and reset usage data");
 
 				log.info("Running algorithm");
-				runAlgorithm(r);
-			}
+				runAlgorithm(env);
+			} else 
+				env.printRegionOrdering();
 
 			// Write out results
-			totalRegionCount += r.getRegions().size();
-			try {
-				outFile.write(Long.toString(loader.getCurrentTimesliceStart()));
-				outFile.write(",");
-				outFile.write(Long.toString(loader.getCurrentTimesliceEnd()));
-				outFile.write(",");
-				StringBuilder b = new StringBuilder();
-				for (Region reg : r.getRegions()) {
-					b.append(reg.getUniqueUsersCount()).append('|').append(
-							reg.getDataReadingCount()).append('|');
-					b.append(
-							((RectilinearPixelPoly) reg.getPolyImpl())
-									.getArea()).append('>');
-				}
-				b.deleteCharAt(b.length() - 1);
-				b.append('\n');
+			if (debugWriteOutAnonolyResults) {
+				totalRegionCount += env.getRegions().size();
+				try {
+					outFile.write(Long.toString(loader
+							.getCurrentTimesliceStart()));
+					outFile.write(",");
+					outFile.write(Long
+							.toString(loader.getCurrentTimesliceEnd()));
+					outFile.write(",");
+					StringBuilder b = new StringBuilder();
+					for (Region reg : env.getRegions()) {
+						b.append(reg.getUniqueUsersCount()).append('|').append(
+								reg.getDataReadingCount()).append('|');
+						b.append(
+								((RectilinearPixelPoly) reg.getPolyImpl())
+										.getArea()).append('>');
+					}
+					b.deleteCharAt(b.length() - 1);
+					b.append('\n');
 
-				outFile.write(b.toString());
-			} catch (IOException e) {
-				e.printStackTrace();
+					outFile.write(b.toString());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
+
 		}
 
 		log.severe("Total Region Count: " + totalRegionCount);
 		// Finish up the output file
-		try {
-			outFile.close();
+		if (debugWriteOutAnonolyResults) {
+			try {
+				outFile.close();
 
-			RandomAccessFile f = new RandomAccessFile(new File(getFileName()),
-					"rw");
-			while (f.readLine().equals("# Total Region Count:") == false)
-				;
-			f.writeBytes("# ");
-			f.writeBytes(Integer.toString(totalRegionCount));
-			f.writeChar('\n');
-			f.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+				RandomAccessFile f = new RandomAccessFile(new File(
+						getFileName()), "rw");
+				while (f.readLine().equals("# Total Region Count:") == false)
+					;
+				f.writeBytes("# ");
+				f.writeBytes(Integer.toString(totalRegionCount));
+				f.writeChar('\n');
+				f.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -232,18 +274,57 @@ public class Main {
 
 		try {
 			FileWriter fw = new FileWriter(filename);
-			fw.write("# From " + df.startDay + "/" + mf.startMonth + "/"
-					+ yf.startYear + " to " + df.endDay + "/" + mf.endMonth
-					+ "/" + yf.endYear);
-			fw.write("\n# And " + hf.startHour + ":00 to " + hf.endHour
-					+ ":00\n");
+			fw.write("# From ");
+			if (df == null)
+				fw.write("MIN");
+			else
+				fw.write(df.startDay);
+			fw.write("/");
+			if (mf == null)
+				fw.write("MIN");
+			else
+				fw.write(mf.startMonth);
+			fw.write("/");
+			if (yf == null)
+				fw.write("MIN");
+			else
+				fw.write(yf.startYear);
+
+			fw.write(" to ");
+			if (df == null)
+				fw.write("MAX");
+			else
+				fw.write(df.endDay);
+			fw.write("/");
+			if (mf == null)
+				fw.write("MAX");
+			else
+				fw.write(mf.endMonth);
+			fw.write("/");
+			if (yf == null)
+				fw.write("MAX");
+			else
+				fw.write(yf.endYear);
+
+			fw.write("\n# And ");
+			if (hf == null)
+				fw.write("MIN");
+			else
+				fw.write(hf.startHour + ":00");
+
+			fw.write(" to ");
+			if (hf == null)
+				fw.write("MAX");
+			else
+				fw.write(hf.endHour + ":00\n");
+
 			GregorianCalendar time = new GregorianCalendar();
 			time.setTimeInMillis(System.currentTimeMillis());
 			fw.write("# Executed at " + time.getTime().toLocaleString() + "\n");
 			fw.write("# Using " + environXsize + "x" + environYsize + "\n");
 			fw.write("# Desired K: " + K + "\n# \n");
 			fw
-					.write("# Format: \n# 	Time start, Time end, Regions\n"
+					.write("# Format: \n# 	Time start, Time end, Environment\n"
 							+ "# Region Format:\n# 	unique users | reading count"
 							+ " | area > <Next Region>\n# \n# Total Region Count:\n# ##################\n\n");
 			return fw;
@@ -271,7 +352,7 @@ public class Main {
 			}
 	}
 
-	private static void printImage(Regions r, int cycle) {
+	private static void printImage(Environment r, int cycle) {
 		BufferedImage bi = r.getImage();
 		StringBuilder name = new StringBuilder("images/cycle");
 		if (cycle < 10)
@@ -294,10 +375,10 @@ public class Main {
 	 * all of the regions, shrinks them if they are too large, merges them if
 	 * they are too small, and marks them as used while it goes
 	 * 
-	 * @param regions
+	 * @param environment
 	 */
-	public static void runAlgorithm(Regions regions) {
-		List<Region> regionsList = regions.getRegions();
+	public static void runAlgorithm(Environment environment) {
+		List<Region> regionsList = environment.getRegions();
 
 		// We use a copy of the original list so that Java does not complain
 		// about concurrent modification exceptions (our calls to regions inside
@@ -325,7 +406,7 @@ public class Main {
 			// We are not large enough, time to merge!
 			if (count < K) {
 				log.info("Needs to merge");
-				List<Region> neighbors = regions.findNeighborsOf(region);
+				List<Region> neighbors = environment.findNeighborsOf(region);
 
 				// Remove all used neighbors
 				Iterator<Region> it = neighbors.iterator();

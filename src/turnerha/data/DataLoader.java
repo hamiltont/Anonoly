@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
-import turnerha.region.Regions;
+import turnerha.region.Environment;
 
 public class DataLoader {
 
@@ -164,14 +164,14 @@ public class DataLoader {
 	}
 
 	/**
-	 * Reads data from the file, adding pixels as we go
+	 * Reads data from the file, adding data readings. Each call will add the data readings from the next timeslice
 	 * 
 	 * @param r
 	 * @return -1 if the process is complete (due to either an error, the EOF,
 	 *         or the end of data in our filter window), or the number of data
 	 *         readings added (not the number of unique users seen)
 	 */
-	public int addPixels(Regions r) {
+	public int addDataReadings(Environment r) {
 		String nextLine = null;
 		int valueCt = 0;
 

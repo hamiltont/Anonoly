@@ -15,12 +15,12 @@ import java.util.Set;
 
 import turnerha.polygon.RectilinearPixelPoly;
 
-public class Regions {
+public class Environment {
 	List<Region> mRegions = new ArrayList<Region>();
 
 	Rectangle mBorder;
 
-	public Regions(Dimension totalArea) {
+	public Environment(Dimension totalArea) {
 		Set<Point> startingPoints = new HashSet<Point>(totalArea.width
 				* totalArea.height);
 		for (int x = 0; x < totalArea.width; x++)
@@ -66,14 +66,38 @@ public class Regions {
 			p.setIsUsed(false);
 	}
 
+	/**
+	 * Regions contain the number of data readings they receive each timeslice
+	 * for reporting purposes. This call resets those counts to zero
+	 */
 	public void resetDataReadingCounts() {
 		for (Region p : mRegions)
 			p.resetDataReadingCount();
 	}
 
+	/**
+	 * Regions contain the number of unique users they have seen (if each
+	 * incoming data reading is from a different user, then this will equal the
+	 * data reading counts). This unique user count is useful for Anonoly
+	 * execution e.g. determining the k-value and for reporting purposes
+	 */
 	public void resetUniqueUsersSeen() {
 		for (Region p : mRegions)
 			p.resetUniqueUsersSeen();
+	}
+
+	/**
+	 * Returns the sum of the unique user counts from each region. This is
+	 * useful for determining if it is possible to meet a specific K value e.g.
+	 * if there are more than K unique users entering data, then K may be
+	 * possible, but if there are fewer than K unique users entering data then K
+	 * is definitely not possible
+	 */
+	public int getUniqueUserCount() {
+		int count = 0;
+		for (Region p : mRegions)
+			count += p.getUniqueUsersCount();
+		return count;
 	}
 
 	public void addDataReading(Point location, String userID) {
@@ -94,7 +118,9 @@ public class Regions {
 
 	public void orderRegions(Comparator<Region> comp) {
 		Collections.sort(mRegions, comp);
+	}
 
+	public void printRegionOrdering() {
 		System.out.println("Regions were ranked: ");
 		System.out.print("\t");
 		for (Region p : mRegions)
