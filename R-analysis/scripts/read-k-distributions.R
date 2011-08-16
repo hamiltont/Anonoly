@@ -9,8 +9,9 @@
 #			  and the area of the region (in pixels for now)
 #	median	- the median value of all unique user counts across
 #			  all regions
-
-
+#
+# Return value is a list with 'tstart', 'tend', 
+# '$regions', 'median'. Access these using x$regions, etc
 ht_read_kdist = function(filename = file.choose()) {
 	
 	data = read.table(filename, 
@@ -19,7 +20,6 @@ ht_read_kdist = function(filename = file.choose()) {
 						colClasses=c("numeric","numeric","character"))
 
 
-	
 	t_start = as.POSIXct(data$t_start, origin="1970-01-01")
 	t_end = as.POSIXct(data$t_end, origin="1970-01-01")
 
@@ -57,9 +57,12 @@ ht_read_kdist = function(filename = file.choose()) {
 		cycle_index = cycle_index + 1
 	}
 
-	median = median(regions[,2])
+	medianz = median(regions[,2])
+  foo = regions
 	
-	return(regions)
+  result = list(median=medianz,tstart=t_start,tend=t_end,regions=foo)
+     
+	return(result)
 }
 
 	
