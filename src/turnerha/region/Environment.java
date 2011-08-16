@@ -198,6 +198,39 @@ public class Environment {
 		return bi;
 	}
 
+	/**
+	 * Returns an image of this environment where there are black pixels on the
+	 * borders, and regions are either green, red, or blue, depending upon if their
+	 * k-value is at, above, or below the desired value.
+	 * 
+	 * @return
+	 */
+	public BufferedImage getKvalueImage(int k) {
+		BufferedImage bi = new BufferedImage(mBorder.width + 1,
+				mBorder.height + 1, BufferedImage.TYPE_INT_RGB);
+		Graphics g = bi.getGraphics();
+
+
+		for (Region poly : mRegions) {
+			RectilinearPixelPoly rp = (RectilinearPixelPoly) poly.getPolyImpl();
+			if (poly.getUniqueUsersCount() < k)
+				g.setColor(Color.BLUE);
+			else if (poly.getUniqueUsersCount() > k)
+				g.setColor(Color.RED);
+			else
+				g.setColor(Color.GREEN);
+			
+			for (Point p : rp.mPoints)
+				g.drawLine(p.x, p.y, p.x, p.y);
+			
+			g.setColor(Color.BLACK);
+			for (Point p : rp.getBorder())
+				g.drawLine(p.x, p.y, p.x, p.y);
+		}
+
+		return bi;
+	}
+
 	private void generateColors() {
 		colors = new Color[15];
 		colors[0] = new Color(51, 102, 255); // med-dark blue

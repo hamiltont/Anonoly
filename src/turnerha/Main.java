@@ -32,13 +32,13 @@ import turnerha.region.Environment;
 public class Main {
 
 	/** The desired K-value */
-	public static int K = 15;
+	public static int K = 35;
 
 	/** The width of the environment in pixels */
-	private static int environXsize = 50;
+	private static int environXsize = 200;
 
 	/** The height of the environment in pixels */
-	private static int environYsize = 50;
+	private static int environYsize = 200;
 
 	/** The start/end year of the data set. These are inclusive years */
 	static YearFilter yf = new YearFilter();
@@ -53,7 +53,7 @@ public class Main {
 	 * If true, an image of the tessellation will be written to disk for every
 	 * cycle of the algorithm
 	 */
-	static final boolean debugPrintTessellationEveryCycle = false;
+	static final boolean debugPrintTessellationEveryCycle = true;
 
 	/**
 	 * If true, algorithm execution results will be written to disk using a
@@ -71,7 +71,7 @@ public class Main {
 	static HourFilter hf = new HourFilter();
 
 	/** The length (in seconds) of the desired timeslice */
-	static long sliceUsed = 30 * 60;
+	static long sliceUsed = 24 * 60 * 60;
 
 	/**
 	 * This is a multiplier used on the desired K value before checking if a
@@ -92,7 +92,21 @@ public class Main {
 	 * -1 indicates that the execution will remain dynamic for all time. This
 	 * value is useful for comparing Anonoly to static tessellation algorithms
 	 */
-	private static int dynamicCycleCount = 50;
+	private static int minimumCycleCount = -1;
+
+	/**
+	 * This is only used if the {@link Main#minimumCycleCount} is not -1 e.g.
+	 * this execution is intended to test a static configuration. In that case,
+	 * this parameter determines the minimum number of regions required before
+	 * the algorithm will stop being dynamic. This is intended to combat
+	 * situations where the environment only has one or two regions when the
+	 * dynamic tessellation stops, which makes the static tessellation map
+	 * rather uninteresting. Note that setting this too high can result in a
+	 * situation where the K value, the size of the environment, and the number
+	 * of incoming data readings never result in this many regions, and
+	 * therefore the algorithm never becomes static
+	 */
+	private static int minimumRequiredStaticRegions = 1;
 
 	public static void main(String[] args) {
 
@@ -108,7 +122,7 @@ public class Main {
 			K = Integer.parseInt(System.getProperty(paramK));
 
 		if (System.getProperty(paramNumberDynamicCycles) != null)
-			dynamicCycleCount = Integer.parseInt(System
+			minimumCycleCount = Integer.parseInt(System
 					.getProperty(paramNumberDynamicCycles));
 
 		if (System.getProperty(paramDatasetRange) != null) {
@@ -177,7 +191,7 @@ public class Main {
 			// temporal accuracy by a multiple of the timeslice length.
 			// We only do this for the dynamic algorithm - static algorithms are
 			// generally static in terms of both spatial and temporal divisions
-			if (dynamicCycleCount == -1 && env.getRegions().size() == 1)
+			if (minimumCycleCount == -1 && env.getRegions().size() == 1)
 				while (env.getUniqueUserCount() < K) {
 					log.info("Extending cycle length by one timeslice");
 
@@ -196,8 +210,12 @@ public class Main {
 				printImage(env, cycle);
 
 			// Checks to see if we should run the algorithm or if we want the
-			// tessellation static at this point
-			if (dynamicCycleCount == -1 || cycle < dynamicCycleCount) {
+			// tessellation static at this point. If we do want it static, and
+			// we have completed enough cycles to be above the minimum cycle
+			// count, then do we have enough regions to be above the minimum
+			// static region count
+			if (minimumCycleCount == -1 || cycle < minimumCycleCount
+					|| env.getRegions().size() > minimumRequiredStaticRegions) {
 				// Order and reset usage
 				env.orderRegions(OptimialityRanking);
 				env.printRegionOrdering();
@@ -264,8 +282,8 @@ public class Main {
 		filename += sliceUsed;
 		filename += "sec";
 		filename += "-" + environXsize + "x" + environYsize;
-		if (dynamicCycleCount != -1)
-			filename += "-" + dynamicCycleCount + "cycle-static";
+		if (minimumCycleCount != -1)
+			filename += "-" + minimumCycleCount + "cycle-static";
 		filename += ".csv";
 		return filename;
 	}
@@ -281,45 +299,45 @@ public class Main {
 			if (df == null)
 				fw.write("MIN");
 			else
-				fw.write(df.startDay);
+				fw.write(Integer.toString(df.startDay));
 			fw.write("/");
 			if (mf == null)
 				fw.write("MIN");
 			else
-				fw.write(mf.startMonth);
+				fw.write(Integer.toString(mf.startMonth));
 			fw.write("/");
 			if (yf == null)
 				fw.write("MIN");
 			else
-				fw.write(yf.startYear);
+				fw.write(Integer.toString(yf.startYear));
 
 			fw.write(" to ");
 			if (df == null)
 				fw.write("MAX");
 			else
-				fw.write(df.endDay);
+				fw.write(Integer.toString(df.endDay));
 			fw.write("/");
 			if (mf == null)
 				fw.write("MAX");
 			else
-				fw.write(mf.endMonth);
+				fw.write(Integer.toString(mf.endMonth));
 			fw.write("/");
 			if (yf == null)
 				fw.write("MAX");
 			else
-				fw.write(yf.endYear);
+				fw.write(Integer.toString(yf.endYear));
 
 			fw.write("\n# And ");
 			if (hf == null)
 				fw.write("MIN");
 			else
-				fw.write(hf.startHour + ":00");
+				fw.write(Integer.toString(hf.startHour) + ":00");
 
 			fw.write(" to ");
 			if (hf == null)
 				fw.write("MAX");
 			else
-				fw.write(hf.endHour + ":00\n");
+				fw.write(Integer.toString(hf.endHour) + ":00\n");
 
 			GregorianCalendar time = new GregorianCalendar();
 			time.setTimeInMillis(System.currentTimeMillis());
@@ -356,7 +374,8 @@ public class Main {
 	}
 
 	private static void printImage(Environment r, int cycle) {
-		BufferedImage bi = r.getImage();
+		//BufferedImage bi = r.getImage();
+		BufferedImage bi = r.getKvalueImage(K);
 		StringBuilder name = new StringBuilder("images/cycle");
 		if (cycle < 10)
 			name.append("00").append(cycle).append(".png");
